@@ -59,6 +59,15 @@ class ApiService {
     return response.data.data as T;
   }
 
+  // ✅ Novo método PATCH
+  async patch<T>(url: string, data?: unknown): Promise<T> {
+    const response = await this.client.patch<ApiResponse<T>>(url, data);
+    if (!response.data.success) {
+      throw new Error(response.data.error || 'Erro na requisição');
+    }
+    return response.data.data as T;
+  }
+
   async delete<T>(url: string): Promise<T> {
     const response = await this.client.delete<ApiResponse<T>>(url);
     if (!response.data.success) {
@@ -69,5 +78,3 @@ class ApiService {
 }
 
 export const api = new ApiService();
-
-
