@@ -64,14 +64,15 @@ export interface Transaction {
   category: TransactionCategory;
   amount: number;
   description?: string;
-  date: Date; // Data para agrupamento (mês de referência)
-  purchaseDate?: Date; // Data de compra original da planilha
+  date: Date | string; // Data para agrupamento (mês de referência)
+  purchaseDate?: Date | string; // Data de compra original da planilha
   installment?: string; // Parcela (ex: "1/10", "2/4", "Única")
   amountUSD?: number; // Valor em US$
   exchangeRate?: number; // Cotação em R$
   redirectType?: string; // Tipo de redirecionamento (ex: "Emprestado", "Doação")
   redirectTo?: string; // Para quem foi redirecionado (ex: "João Silva")
   source?: string;
+  metadata?: Record<string, any>; // Metadados adicionais
 }
 
 export interface ApiResponse<T = unknown> {
@@ -105,8 +106,8 @@ export interface CreateTransactionData {
   category: TransactionCategory;
   amount: number;
   description?: string;
-  date?: Date;
-  purchaseDate?: Date;
+  date?: Date | string;
+  purchaseDate?: Date | string;
   installment?: string;
   amountUSD?: number;
   exchangeRate?: number;
@@ -120,8 +121,8 @@ export interface UpdateTransactionData {
   category?: TransactionCategory;
   amount?: number;
   description?: string;
-  date?: Date;
-  purchaseDate?: Date;
+  date?: Date | string;
+  purchaseDate?: Date | string;
   installment?: string;
   amountUSD?: number;
   exchangeRate?: number;

@@ -402,7 +402,7 @@ export const DashboardPage: React.FC = () => {
 
 
 
-      const typeCounts = response.data.reduce((acc: any, t: any) => {
+      const typeCounts = transactionsResponse.data.reduce((acc: any, t: any) => {
         const type = String(t.type).toUpperCase();
         acc[type] = (acc[type] || 0) + 1;
         return acc;
@@ -411,7 +411,7 @@ export const DashboardPage: React.FC = () => {
 
       // Garantir que amount seja sempre número e comparar tipo como string
       // Usar comparação mais flexível para aceitar tanto string quanto enum
-      const income = response.data
+      const income = transactionsResponse.data
         .filter((t: any) => {
           const type = String(t.type || '').toUpperCase().trim();
           const isIncome = type === 'INCOME' ||
@@ -425,7 +425,7 @@ export const DashboardPage: React.FC = () => {
           return sum + amount;
         }, 0);
 
-      const expense = response.data
+      const expense = transactionsResponse.data
         .filter((t: any) => {
           const type = String(t.type || '').toUpperCase().trim();
           return type === 'EXPENSE' ||
