@@ -83,9 +83,6 @@ export const uploadService = {
     
     return () => {
       xhr.abort();
-      if (eventSource) {
-        eventSource.close();
-      }
     };
   },
 

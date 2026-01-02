@@ -3,7 +3,7 @@ import styled from 'styled-components';
 import { transactionService, CreateTransactionData, UpdateTransactionData } from '@services/transaction.service';
 import { uploadService } from '@services/upload.service';
 import { cardService, Card as CardType } from '@services/card.service';
-import { Transaction, TransactionType, TransactionCategory } from '@types';
+import { Transaction, TransactionType, TransactionCategory, UploadResponse } from '@types';
 import { format, getYear, getMonth } from 'date-fns';
 import { Card } from '@components/Card';
 import { useToast } from '@contexts/ToastContext';
@@ -863,9 +863,9 @@ export const TransactionsPage: React.FC = () => {
     e.preventDefault();
     try {
       // Converter Date para string ISO antes de enviar
-      const createData = {
+      const createData: CreateTransactionData = {
         ...formData,
-        date: formData.date ? new Date(formData.date).toISOString() : undefined,
+        date: formData.date ? (typeof formData.date === 'string' ? formData.date : (formData.date as Date).toISOString()) : undefined,
       };
       await transactionService.create(createData);
       setShowModal(false);
@@ -940,7 +940,7 @@ export const TransactionsPage: React.FC = () => {
       const updateData: UpdateTransactionData = {
         ...formData,
         amount: amount,
-        date: formData.date ? new Date(formData.date).toISOString() : undefined,
+        date: formData.date ? (typeof formData.date === 'string' ? formData.date : (formData.date as Date).toISOString()) : undefined,
       };
       
      
@@ -1234,25 +1234,26 @@ export const TransactionsPage: React.FC = () => {
       );
 
       // Verificar resultado final após o stream terminar
-      if (result?.requiresPassword) {
+      const result_typed = result as UploadResponse;
+      if (result_typed?.requiresPassword) {
      
         setRequiresPassword(true);
         setUploading(false);
         setUploadProgress(0);
-        showWarning(result.message || 'Esta planilha está protegida por senha');
+        showWarning(result_typed.message || 'Esta planilha está protegida por senha');
         return;
       }
 
-      if (result?.invalidPassword) {
+      if (result_typed?.invalidPassword) {
         setInvalidPassword(true);
         setUploading(false);
-        showError(result.message || 'Senha incorreta. Tente novamente.');
+        showError(result_typed.message || 'Senha incorreta. Tente novamente.');
         return;
       }
 
       // Verificar se há erro no resultado
-      if (result?.error || (result?.success === false && result?.message)) {
-        const errorMessage = result.error || result.message || 'Erro ao processar arquivo';
+      if (result_typed?.error || (result_typed?.success === false && result_typed?.message)) {
+        const errorMessage = result_typed.error || result_typed.message || 'Erro ao processar arquivo';
         setUploadMessage(`❌ ${errorMessage}`);
         setUploadProgress(0);
         showError(errorMessage);
@@ -1264,16 +1265,16 @@ export const TransactionsPage: React.FC = () => {
         return;
       }
 
-      if (result?.success) {
+      if (result_typed?.success) {
         setUploadProgress(100);
-        const successMessage = result.transactionsCreated > 0 
-          ? `✅ ${result.transactionsCreated} transação(ões) criada(s) com sucesso!`
-          : result.message || 'Processamento concluído com sucesso!';
+        const successMessage = result_typed.transactionsCreated > 0 
+          ? `✅ ${result_typed.transactionsCreated} transação(ões) criada(s) com sucesso!`
+          : result_typed.message || 'Processamento concluído com sucesso!';
         setUploadMessage(successMessage);
-        if (result.transactionsCreated > 0) {
+        if (result_typed.transactionsCreated > 0) {
           showSuccess(successMessage);
         } else {
-          showInfo(result.message || 'Processamento concluído, mas nenhuma nova transação foi criada.');
+          showInfo(result_typed.message || 'Processamento concluído, mas nenhuma nova transação foi criada.');
         }
         // Fechar modal e recarregar imediatamente
         setUploadedFile(null);
@@ -1286,13 +1287,13 @@ export const TransactionsPage: React.FC = () => {
         loadTransactions(); // Recarregar transações
       } else {
         // Caso não tenha sucesso explícito, verificar se há mensagem final
-        if (result?.message) {
-          if (result.message.includes('❌') || result.message.includes('Erro')) {
-            showError(result.message);
-          } else if (result.message.includes('✅') || result.message.includes('sucesso')) {
-            showSuccess(result.message);
+        if (result_typed?.message) {
+          if (result_typed.message.includes('❌') || result_typed.message.includes('Erro')) {
+            showError(result_typed.message);
+          } else if (result_typed.message.includes('✅') || result_typed.message.includes('sucesso')) {
+            showSuccess(result_typed.message);
           } else {
-            showInfo(result.message);
+            showInfo(result_typed.message);
           }
         }
       }
@@ -1401,20 +1402,21 @@ export const TransactionsPage: React.FC = () => {
         selectedCardId || undefined // cardId se selecionado
       );
 
-      if (result.invalidPassword) {
+      const result_typed2 = result as UploadResponse;
+      if (result_typed2.invalidPassword) {
         setInvalidPassword(true);
         setUploading(false);
         showError('Senha incorreta. Tente novamente.');
         return;
       }
 
-      if (result.success) {
+      if (result_typed2.success) {
         setUploadProgress(100);
-        const successMessage = result.transactionsCreated > 0 
-          ? `✅ ${result.transactionsCreated} transação(ões) criada(s) com sucesso!`
+        const successMessage = result_typed2.transactionsCreated > 0 
+          ? `✅ ${result_typed2.transactionsCreated} transação(ões) criada(s) com sucesso!`
           : 'Processamento concluído com sucesso!';
         setUploadMessage(successMessage);
-        if (result.transactionsCreated > 0) {
+        if (result_typed2.transactionsCreated > 0) {
           showSuccess(successMessage);
         } else {
           showInfo('Processamento concluído, mas nenhuma nova transação foi criada.');
