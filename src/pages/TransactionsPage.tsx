@@ -520,7 +520,7 @@ export const TransactionsPage: React.FC = () => {
   const [showRedirectModal, setShowRedirectModal] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [redirectingTransaction, setRedirectingTransaction] = useState<Transaction | null>(null);
-  const [activeTab, setActiveTab] = useState<'manual' | 'upload'>('manual');
+  const [activeTab, setActiveTab] = useState<'manual' | 'spreadsheet' | 'document'>('manual');
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -765,24 +765,31 @@ export const TransactionsPage: React.FC = () => {
     }
   };
 
-  const handleFileSelect = (file: File) => {
+  const handleFileSelect = (file: File, tabType?: 'spreadsheet' | 'document') => {
     if (!file) return;
 
-    // Validar tipos de arquivo (imagens, PDFs, planilhas)
-    const validTypes = [
-      'image/jpeg', 'image/png', 'image/jpg',
-      'application/pdf',
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
-      'application/vnd.ms-excel', // .xls
-      'text/csv', // .csv
-    ];
-    
     const fileExtension = file.name.split('.').pop()?.toLowerCase() || '';
-    const validExtensions = ['pdf', 'jpg', 'jpeg', 'png', 'xlsx', 'xls', 'csv'];
     
-    if (!validTypes.includes(file.type) && !validExtensions.includes(fileExtension)) {
-      showError('Por favor, selecione imagens (JPG, PNG), PDFs ou planilhas (Excel, CSV)');
-      return;
+    // Validar baseado na aba ativa
+    if (tabType === 'spreadsheet') {
+      const validExtensions = ['xlsx', 'xls', 'csv'];
+      if (!validExtensions.includes(fileExtension)) {
+        showError('Por favor, selecione apenas planilhas (Excel XLSX, XLS ou CSV)');
+        return;
+      }
+    } else if (tabType === 'document') {
+      const validExtensions = ['pdf', 'jpg', 'jpeg', 'png'];
+      if (!validExtensions.includes(fileExtension)) {
+        showError('Por favor, selecione apenas documentos (PDF, JPG, PNG)');
+        return;
+      }
+    } else {
+      // Fallback: validar todos os tipos
+      const validExtensions = ['pdf', 'jpg', 'jpeg', 'png', 'xlsx', 'xls', 'csv'];
+      if (!validExtensions.includes(fileExtension)) {
+        showError('Por favor, selecione imagens (JPG, PNG), PDFs ou planilhas (Excel, CSV)');
+        return;
+      }
     }
 
     if (file.size > 10 * 1024 * 1024) {
@@ -988,7 +995,7 @@ export const TransactionsPage: React.FC = () => {
     setDragging(false);
     const file = e.dataTransfer.files[0];
     if (file) {
-      handleFileSelect(file);
+      handleFileSelect(file, activeTab === 'spreadsheet' ? 'spreadsheet' : activeTab === 'document' ? 'document' : undefined);
     }
   };
 
@@ -1177,7 +1184,23 @@ export const TransactionsPage: React.FC = () => {
                                 ? format(new Date(transaction.purchaseDate), 'dd/MM/yyyy')
                                 : format(new Date(transaction.date), 'dd/MM/yyyy')}
                             </TableCell>
-                            <TableCell>{transaction.description || '-'}</TableCell>
+                            <TableCell>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <span>{transaction.description || '-'}</span>
+                                {transaction.metadata && typeof transaction.metadata === 'object' && 'isDetailed' in transaction.metadata && (
+                                  <span style={{
+                                    fontSize: '0.75rem',
+                                    padding: '0.125rem 0.5rem',
+                                    borderRadius: '12px',
+                                    fontWeight: 600,
+                                    backgroundColor: (transaction.metadata as any).isDetailed ? '#dbeafe' : '#fef3c7',
+                                    color: (transaction.metadata as any).isDetailed ? '#1e40af' : '#92400e'
+                                  }}>
+                                    {(transaction.metadata as any).isDetailed ? '📊 Detalhada' : '📄 Resumida'}
+                                  </span>
+                                )}
+                              </div>
+                            </TableCell>
                             <TableCell>
                               <CategoryBadge>{formatCategory(transaction.category)}</CategoryBadge>
                             </TableCell>
@@ -1237,6 +1260,8 @@ export const TransactionsPage: React.FC = () => {
         setShowModal(false);
         setUploadedFile(null);
         setActiveTab('manual');
+        setRequiresPassword(false);
+        setPassword('');
         // Resetar mês de referência para o mês atual
         setReferenceMonth(new Date().getMonth() + 1);
       }}>
@@ -1247,6 +1272,8 @@ export const TransactionsPage: React.FC = () => {
               setShowModal(false);
               setUploadedFile(null);
               setActiveTab('manual');
+              setRequiresPassword(false);
+              setPassword('');
               // Resetar mês de referência para o mês atual
               setReferenceMonth(new Date().getMonth() + 1);
             }}>×</CloseButton>
@@ -1255,8 +1282,11 @@ export const TransactionsPage: React.FC = () => {
             <Tab $active={activeTab === 'manual'} onClick={() => setActiveTab('manual')}>
               ✏️ Manual
             </Tab>
-            <Tab $active={activeTab === 'upload'} onClick={() => setActiveTab('upload')}>
-              📤 Upload Arquivo
+            <Tab $active={activeTab === 'spreadsheet'} onClick={() => setActiveTab('spreadsheet')}>
+              📊 Planilha (Detalhada)
+            </Tab>
+            <Tab $active={activeTab === 'document'} onClick={() => setActiveTab('document')}>
+              📄 Documento (Resumida)
             </Tab>
           </Tabs>
           {activeTab === 'manual' ? (
@@ -1346,10 +1376,10 @@ export const TransactionsPage: React.FC = () => {
               <SubmitButton type="submit">Salvar</SubmitButton>
             </ButtonGroup>
           </Form>
-          ) : (
+          ) : activeTab === 'spreadsheet' ? (
             <div>
               <FormGroup>
-                <Label>Enviar Comprovante</Label>
+                <Label>Enviar Planilha (Transações Detalhadas)</Label>
                 <FileUploadArea
                   $dragging={dragging}
                   onDragOver={handleDragOver}
@@ -1357,24 +1387,24 @@ export const TransactionsPage: React.FC = () => {
                   onDrop={handleDrop}
                   onClick={() => fileInputRef.current?.click()}
                 >
-                  <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📎</div>
+                  <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📊</div>
                   <div style={{ fontWeight: 600, marginBottom: '0.5rem' }}>
-                    Arraste um arquivo aqui ou clique para selecionar
+                    Arraste uma planilha aqui ou clique para selecionar
                   </div>
                   <UploadHint>
-                    Formatos aceitos: PDF, JPG, PNG, Excel (XLSX, XLS), CSV (máximo 10MB)
+                    Formatos aceitos: Excel (XLSX, XLS), CSV (máximo 10MB)
                   </UploadHint>
-                  <UploadHint style={{ marginTop: '0.5rem' }}>
-                    📄 Faturas de cartão • 📷 Fotos de comprovantes • 📊 Planilhas • 💸 Comprovantes PIX
+                  <UploadHint style={{ marginTop: '0.5rem', color: '#059669', fontWeight: 600 }}>
+                    ✓ Cria transações detalhadas com todas as informações da planilha
                   </UploadHint>
                 </FileUploadArea>
                 <FileInput
                   ref={fileInputRef}
                   type="file"
-                  accept=".pdf,.jpg,.jpeg,.png,.xlsx,.xls,.csv"
+                  accept=".xlsx,.xls,.csv"
                   onChange={(e) => {
                     const file = e.target.files?.[0];
-                    if (file) handleFileSelect(file);
+                    if (file) handleFileSelect(file, 'spreadsheet');
                   }}
                 />
                 {uploadedFile && (
@@ -1392,7 +1422,7 @@ export const TransactionsPage: React.FC = () => {
                   </FilePreview>
                 )}
               </FormGroup>
-              {/* Campo para mês de referência - para planilhas e PDFs */}
+              {/* Campo para mês de referência - para planilhas */}
               {uploadedFile && (
                 <FormGroup>
                   <Label>Mês de Referência *</Label>
@@ -1415,11 +1445,11 @@ export const TransactionsPage: React.FC = () => {
                     <option value={12}>Dezembro</option>
                   </Select>
                   <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '0.25rem' }}>
-                    Selecione o mês ao qual este arquivo se refere ({new Date().getFullYear()}). Todas as transações serão criadas com essa data.
+                    Selecione o mês ao qual esta planilha se refere ({new Date().getFullYear()}). Todas as transações serão criadas com essa data.
                   </div>
                 </FormGroup>
               )}
-              {requiresPassword && (
+              {requiresPassword && activeTab === 'spreadsheet' && (
                 <PasswordContainer>
                   <PasswordTitle>🔒 Esta planilha está protegida por senha</PasswordTitle>
                   <PasswordInput
@@ -1459,6 +1489,114 @@ export const TransactionsPage: React.FC = () => {
                     setShowModal(false);
                     setUploadedFile(null);
                     setActiveTab('manual');
+                    setRequiresPassword(false);
+                    setPassword('');
+                    // Resetar mês de referência para o mês atual
+                    setReferenceMonth(new Date().getMonth() + 1);
+                  }}>
+                    Cancelar
+                  </CancelButton>
+                  {uploadedFile && (
+                    <SubmitButton type="button" onClick={handleUploadAndProcess}>
+                      Salvar e Processar
+                    </SubmitButton>
+                  )}
+                </ButtonGroup>
+              )}
+            </div>
+          ) : (
+            <div>
+              <FormGroup>
+                <Label>Enviar Documento (Transações Resumidas)</Label>
+                <FileUploadArea
+                  $dragging={dragging}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📄</div>
+                  <div style={{ fontWeight: 600, marginBottom: '0.5rem' }}>
+                    Arraste um documento aqui ou clique para selecionar
+                  </div>
+                  <UploadHint>
+                    Formatos aceitos: PDF, JPG, PNG (máximo 10MB)
+                  </UploadHint>
+                  <UploadHint style={{ marginTop: '0.5rem' }}>
+                    📄 Faturas de cartão • 📷 Fotos de comprovantes • 💸 Comprovantes PIX
+                  </UploadHint>
+                  <UploadHint style={{ marginTop: '0.5rem', color: '#dc2626', fontWeight: 600 }}>
+                    ⚠ Cria transações resumidas (apenas valor total extraído)
+                  </UploadHint>
+                </FileUploadArea>
+                <FileInput
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleFileSelect(file, 'document');
+                  }}
+                />
+                {uploadedFile && (
+                  <FilePreview>
+                    <FileInfo>
+                      <FileIcon>{getFileIcon(uploadedFile.name)}</FileIcon>
+                      <FileDetails>
+                        <FileName>{uploadedFile.name}</FileName>
+                        <FileSize>{formatFileSize(uploadedFile.size)}</FileSize>
+                      </FileDetails>
+                    </FileInfo>
+                    <RemoveFileButton onClick={() => setUploadedFile(null)}>
+                      Remover
+                    </RemoveFileButton>
+                  </FilePreview>
+                )}
+              </FormGroup>
+              {/* Campo para mês de referência - para documentos */}
+              {uploadedFile && (
+                <FormGroup>
+                  <Label>Mês de Referência *</Label>
+                  <Select
+                    value={referenceMonth}
+                    onChange={(e) => setReferenceMonth(parseInt(e.target.value, 10))}
+                    required
+                  >
+                    <option value={1}>Janeiro</option>
+                    <option value={2}>Fevereiro</option>
+                    <option value={3}>Março</option>
+                    <option value={4}>Abril</option>
+                    <option value={5}>Maio</option>
+                    <option value={6}>Junho</option>
+                    <option value={7}>Julho</option>
+                    <option value={8}>Agosto</option>
+                    <option value={9}>Setembro</option>
+                    <option value={10}>Outubro</option>
+                    <option value={11}>Novembro</option>
+                    <option value={12}>Dezembro</option>
+                  </Select>
+                  <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                    Selecione o mês ao qual este documento se refere ({new Date().getFullYear()}). A transação será criada com essa data.
+                  </div>
+                </FormGroup>
+              )}
+              {uploading && (
+                <ProgressContainer>
+                  <ProgressBarContainer>
+                    <ProgressBar $progress={uploadProgress} />
+                  </ProgressBarContainer>
+                  <ProgressText>{uploadMessage || 'Processando arquivo...'}</ProgressText>
+                  <ProgressPercentage>{uploadProgress}%</ProgressPercentage>
+                </ProgressContainer>
+              )}
+              {!uploading && (
+                <ButtonGroup style={{ marginTop: '1.5rem' }}>
+                  <CancelButton type="button" onClick={() => {
+                    setShowModal(false);
+                    setUploadedFile(null);
+                    setActiveTab('manual');
+                    setRequiresPassword(false);
+                    setPassword('');
                     // Resetar mês de referência para o mês atual
                     setReferenceMonth(new Date().getMonth() + 1);
                   }}>
