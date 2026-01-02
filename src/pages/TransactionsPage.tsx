@@ -5,6 +5,8 @@ import { uploadService } from '@services/upload.service';
 import { Transaction, TransactionType, TransactionCategory } from '@types';
 import { format, getYear, getMonth } from 'date-fns';
 import { Card } from '@components/Card';
+import { useToast } from '@contexts/ToastContext';
+import { ConfirmDialog } from '@components/ConfirmDialog';
 
 const Container = styled.div`
   display: flex;
@@ -510,6 +512,7 @@ const ActionsCell = styled(TableCell)`
 `;
 
 export const TransactionsPage: React.FC = () => {
+  const { showSuccess, showError, showWarning, showInfo } = useToast();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -545,6 +548,17 @@ export const TransactionsPage: React.FC = () => {
     redirectType: '',
     redirectTo: '',
   });
+  const [confirmDialog, setConfirmDialog] = useState<{
+    show: boolean;
+    title?: string;
+    message: string;
+    onConfirm: () => void;
+    type?: 'warning' | 'danger' | 'info';
+  }>({
+    show: false,
+    message: '',
+    onConfirm: () => {},
+  });
 
   useEffect(() => {
     loadTransactions();
@@ -569,8 +583,9 @@ export const TransactionsPage: React.FC = () => {
       setShowModal(false);
       resetFormData();
       loadTransactions();
+      showSuccess('Transação criada com sucesso!');
     } catch (error: any) {
-      alert(error.message || 'Erro ao criar transação');
+      showError(error.message || 'Erro ao criar transação');
     }
   };
 
@@ -609,19 +624,30 @@ export const TransactionsPage: React.FC = () => {
       setEditingTransaction(null);
       resetFormData();
       loadTransactions();
+      showSuccess('Transação atualizada com sucesso!');
     } catch (error: any) {
-      alert(error.message || 'Erro ao atualizar transação');
+      showError(error.message || 'Erro ao atualizar transação');
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Tem certeza que deseja deletar esta transação?')) return;
-    try {
-      await transactionService.delete(id);
-      loadTransactions();
-    } catch (error: any) {
-      alert(error.message || 'Erro ao deletar transação');
-    }
+    setConfirmDialog({
+      show: true,
+      title: 'Confirmar exclusão',
+      message: 'Tem certeza que deseja deletar esta transação? Esta ação não pode ser desfeita.',
+      type: 'danger',
+      onConfirm: async () => {
+        try {
+          await transactionService.delete(id);
+          loadTransactions();
+          showSuccess('Transação deletada com sucesso!');
+          setConfirmDialog({ show: false, message: '', onConfirm: () => {} });
+        } catch (error: any) {
+          showError(error.message || 'Erro ao deletar transação');
+          setConfirmDialog({ show: false, message: '', onConfirm: () => {} });
+        }
+      },
+    });
   };
 
   const handleRedirect = (transaction: Transaction) => {
@@ -683,13 +709,13 @@ export const TransactionsPage: React.FC = () => {
 
   const handleGenerateInstallments = async (transaction: Transaction) => {
     if (!transaction.installment || transaction.installment === 'Única') {
-      alert('Esta transação não possui parcelamento');
+      showWarning('Esta transação não possui parcelamento');
       return;
     }
 
     const match = transaction.installment.match(/^(\d+)\/(\d+)$/);
     if (!match) {
-      alert('Formato de parcela inválido');
+      showError('Formato de parcela inválido');
       return;
     }
 
@@ -697,22 +723,28 @@ export const TransactionsPage: React.FC = () => {
     const total = parseInt(match[2], 10);
 
     if (current >= total) {
-      alert('Todas as parcelas já foram lançadas');
+      showWarning('Todas as parcelas já foram lançadas');
       return;
     }
 
     const missing = total - current;
-    if (!confirm(`Deseja gerar ${missing} parcela(s) futura(s) para esta transação?`)) {
-      return;
-    }
-
-    try {
-      const result = await transactionService.generateFutureInstallments(transaction.id);
-      alert(`${result.created} parcela(s) criada(s) com sucesso!`);
-      loadTransactions(); // Recarregar para mostrar as novas parcelas e esconder o botão
-    } catch (error: any) {
-      alert(error.message || 'Erro ao gerar parcelas futuras');
-    }
+    setConfirmDialog({
+      show: true,
+      title: 'Gerar parcelas futuras',
+      message: `Deseja gerar ${missing} parcela(s) futura(s) para esta transação?`,
+      type: 'info',
+      onConfirm: async () => {
+        try {
+          const result = await transactionService.generateFutureInstallments(transaction.id);
+          showSuccess(`${result.created} parcela(s) criada(s) com sucesso!`);
+          loadTransactions(); // Recarregar para mostrar as novas parcelas e esconder o botão
+          setConfirmDialog({ show: false, message: '', onConfirm: () => {} });
+        } catch (error: any) {
+          showError(error.message || 'Erro ao gerar parcelas futuras');
+          setConfirmDialog({ show: false, message: '', onConfirm: () => {} });
+        }
+      },
+    });
   };
 
   const handleRedirectSubmit = async (e: React.FormEvent) => {
@@ -727,8 +759,9 @@ export const TransactionsPage: React.FC = () => {
       setRedirectingTransaction(null);
       setRedirectData({ redirectType: '', redirectTo: '' });
       loadTransactions();
+      showSuccess('Transação redirecionada com sucesso!');
     } catch (error: any) {
-      alert(error.message || 'Erro ao redirecionar transação');
+      showError(error.message || 'Erro ao redirecionar transação');
     }
   };
 
@@ -748,12 +781,12 @@ export const TransactionsPage: React.FC = () => {
     const validExtensions = ['pdf', 'jpg', 'jpeg', 'png', 'xlsx', 'xls', 'csv'];
     
     if (!validTypes.includes(file.type) && !validExtensions.includes(fileExtension)) {
-      alert('Por favor, selecione imagens (JPG, PNG), PDFs ou planilhas (Excel, CSV)');
+      showError('Por favor, selecione imagens (JPG, PNG), PDFs ou planilhas (Excel, CSV)');
       return;
     }
 
     if (file.size > 10 * 1024 * 1024) {
-      alert('O arquivo deve ter no máximo 10MB');
+      showError('O arquivo deve ter no máximo 10MB');
       return;
     }
 
@@ -769,7 +802,7 @@ export const TransactionsPage: React.FC = () => {
 
   const handleUploadAndProcess = async () => {
     if (!uploadedFile) {
-      alert('Por favor, selecione um arquivo primeiro.');
+      showWarning('Por favor, selecione um arquivo primeiro.');
       return;
     }
 
@@ -778,7 +811,7 @@ export const TransactionsPage: React.FC = () => {
     const referenceMonthStr = `${currentYear}-${String(referenceMonth).padStart(2, '0')}`;
 
     if (!referenceMonth || referenceMonth < 1 || referenceMonth > 12) {
-      alert('Por favor, selecione o mês de referência antes de processar.');
+      showWarning('Por favor, selecione o mês de referência antes de processar.');
       return;
     }
 
@@ -883,7 +916,7 @@ export const TransactionsPage: React.FC = () => {
     const referenceMonthStr = `${currentYear}-${String(referenceMonth).padStart(2, '0')}`;
 
     if (!referenceMonth || referenceMonth < 1 || referenceMonth > 12) {
-      alert('Por favor, selecione o mês de referência antes de processar.');
+      showWarning('Por favor, selecione o mês de referência antes de processar.');
       return;
     }
 
@@ -1606,6 +1639,15 @@ export const TransactionsPage: React.FC = () => {
           </Form>
         </ModalContent>
       </ModalOverlay>
+
+      <ConfirmDialog
+        show={confirmDialog.show}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        type={confirmDialog.type}
+        onConfirm={confirmDialog.onConfirm}
+        onCancel={() => setConfirmDialog({ show: false, message: '', onConfirm: () => {} })}
+      />
     </Container>
   );
 };

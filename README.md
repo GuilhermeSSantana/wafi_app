@@ -58,3 +58,44 @@ npm run build
 - Processamento de planilhas Excel/CSV
 - Relatórios financeiros
 
+## Padrão de Commits
+
+Este projeto segue o padrão [Conventional Commits](https://www.conventionalcommits.org/). 
+
+Formato: `<tipo>(<escopo>): <descrição>`
+
+**Tipos principais:**
+- `feat`: Nova funcionalidade
+- `fix`: Correção de bug
+- `docs`: Documentação
+- `refactor`: Refatoração
+- `style`: Formatação
+- `test`: Testes
+- `chore`: Manutenção
+
+**Exemplos:**
+```bash
+feat(auth): adiciona validação de token
+fix(transactions): corrige cálculo de total
+docs: atualiza instruções de instalação
+```
+
+Para mais detalhes, consulte [COMMIT_CONVENTION.md](./COMMIT_CONVENTION.md).
+
+### Instalação e Configuração
+
+1. Instalar dependências do commitlint:
+```bash
+npm install
+```
+
+2. (Opcional) Configurar template de commit message no Git:
+```bash
+git config commit.template .gitmessage
+```
+
+3. Validar mensagem de commit manualmente:
+```bash
+npm run commitlint
+```
+

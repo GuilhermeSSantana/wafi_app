@@ -1,0 +1,24 @@
+# <tipo>(<escopo>): <descrição>
+# 
+# [corpo opcional]
+# 
+# [rodapé opcional]
+#
+# Tipos permitidos:
+#   feat:     Nova funcionalidade
+#   fix:      Correção de bug
+#   docs:     Alterações na documentação
+#   style:    Formatação, não afeta o código
+#   refactor: Refatoração de código
+#   perf:     Melhoria de performance
+#   test:     Adição ou correção de testes
+#   build:    Mudanças no build ou dependências
+#   ci:       Mudanças em arquivos de CI
+#   chore:    Tarefas de manutenção
+#   revert:   Reverte um commit anterior
+#
+# Exemplos:
+#   feat(auth): adiciona validação de token
+#   fix(transactions): corrige cálculo de total
+#   docs: atualiza instruções de instalação
+
