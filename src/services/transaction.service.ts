@@ -1,32 +1,12 @@
 import { api } from './api';
-import { Transaction, PaginatedResponse, TransactionType, TransactionCategory } from '@types';
-
-export interface CreateTransactionData {
-  type: TransactionType;
-  category: TransactionCategory;
-  amount: number;
-  description?: string;
-  date?: Date;
-  installment?: string;
-  amountUSD?: number;
-  exchangeRate?: number;
-  redirectType?: string;
-  redirectTo?: string;
-  employeeId?: string;
-}
-
-export interface UpdateTransactionData {
-  type?: TransactionType;
-  category?: TransactionCategory;
-  amount?: number;
-  description?: string;
-  date?: Date;
-  installment?: string;
-  amountUSD?: number;
-  exchangeRate?: number;
-  redirectType?: string;
-  redirectTo?: string;
-}
+import { 
+  Transaction, 
+  PaginatedResponse, 
+  TransactionType, 
+  TransactionCategory,
+  CreateTransactionData,
+  UpdateTransactionData 
+} from '@types';
 
 export interface TransactionFilters {
   type?: TransactionType;

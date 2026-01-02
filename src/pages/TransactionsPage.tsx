@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
-import { transactionService, CreateTransactionData } from '@services/transaction.service';
+import { transactionService, CreateTransactionData, UpdateTransactionData } from '@services/transaction.service';
 import { uploadService } from '@services/upload.service';
 import { cardService, Card as CardType } from '@services/card.service';
 import { Transaction, TransactionType, TransactionCategory } from '@types';
@@ -926,10 +926,10 @@ export const TransactionsPage: React.FC = () => {
     if (!editingTransaction) return;
     try {
       // Garantir que amount é um número válido
-      let amount = formData.amount;
+      let amount = formData.amount as number;
       if (typeof amount === 'string') {
         // Se for string, converter vírgula para ponto e parsear
-        amount = parseFloat(amount.replace(',', '.')) || 0;
+        amount = parseFloat((amount as string).replace(',', '.')) || 0;
       }
       if (isNaN(amount) || amount <= 0) {
         showError('Por favor, insira um valor válido maior que zero');
@@ -937,7 +937,7 @@ export const TransactionsPage: React.FC = () => {
       }
 
       // Converter Date para string ISO antes de enviar
-      const updateData = {
+      const updateData: UpdateTransactionData = {
         ...formData,
         amount: amount,
         date: formData.date ? new Date(formData.date).toISOString() : undefined,

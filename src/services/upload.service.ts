@@ -1,13 +1,6 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+import { UploadResponse } from '@types';
 
-export interface UploadResponse {
-  filename: string;
-  originalname: string;
-  mimetype: string;
-  size: number;
-  url: string;
-  processing?: boolean;
-}
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 export interface UploadProgressEvent {
   progress: number;
@@ -105,7 +98,7 @@ export const uploadService = {
     password?: string,
     referenceMonth?: string, // formato "YYYY-MM"
     cardId?: string // ID do cartão associado
-  ): Promise<{ success: boolean; transactionsCreated: number; filename: string; originalname: string }> {
+  ): Promise<UploadResponse> {
     const formData = new FormData();
     formData.append('file', file);
     if (password) {
@@ -186,14 +179,15 @@ export const uploadService = {
 
     // Se precisar de senha ou senha inválida, retornar informação especial (NÃO lançar erro)
     if (finalResult?.requiresPassword || finalResult?.invalidPassword) {
-      
       return {
         success: false,
+        transactionsCreated: 0,
+        filename: finalResult.filename || file.name,
+        originalname: finalResult.originalname || file.name,
         requiresPassword: finalResult.requiresPassword || false,
         invalidPassword: finalResult.invalidPassword || false,
         message: finalResult.message || '',
-        progress: finalResult.progress || 0,
-      };
+      } as any;
     }
 
     // Se há resultado com sucesso, retornar
