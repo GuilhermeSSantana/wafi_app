@@ -4,11 +4,11 @@ import { transactionService } from '@services/transaction.service';
 import { cardService, CardStats } from '@services/card.service';
 import { authService } from '@services/auth.service';
 import { Transaction, TransactionType } from '@types';
-import { format, subDays, startOfMonth, endOfMonth, startOfYear, endOfYear, formatDistanceToNow } from 'date-fns';
+import { format, subDays, startOfMonth, endOfMonth, startOfYear, endOfYear } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { StatCard } from '@components/StatCard';
 import { Card } from '@components/Card';
-import { AreaChart, Area, LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { AreaChart, Area, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 const Container = styled.div`
   display: flex;
@@ -400,78 +400,44 @@ export const DashboardPage: React.FC = () => {
       setTransactions(transactionsResponse.data);
       setCardStats(cardsStatsResponse);
 
-      // Debug: verificar tipos de transações
-      console.log('📊 Dashboard - Total de transações retornadas:', response.data.length);
-      console.log('📊 Dashboard - Total no banco (response.total):', response.total);
-      console.log('📊 Dashboard - Parâmetros da requisição:', { limit: 10000, page: 1 });
-      
+
+
       const typeCounts = response.data.reduce((acc: any, t: any) => {
         const type = String(t.type).toUpperCase();
         acc[type] = (acc[type] || 0) + 1;
         return acc;
       }, {});
-      console.log('📊 Dashboard - Contagem por tipo:', typeCounts);
-      
-      // Debug: verificar primeiras transações para ver o formato do tipo
-      if (response.data.length > 0) {
-        console.log('📊 Dashboard - Primeiras 3 transações:', response.data.slice(0, 3).map((t: any) => ({
-          id: t.id,
-          type: t.type,
-          typeString: String(t.type),
-          typeUpper: String(t.type).toUpperCase(),
-          amount: t.amount,
-          description: t.description
-        })));
-        
-        // Verificar se há transações INCOME
-        const incomeTransactions = response.data.filter((t: any) => {
-          const type = String(t.type).toUpperCase();
-          return type === 'INCOME';
-        });
-        console.log('💰 Dashboard - Transações INCOME encontradas:', incomeTransactions.length);
-        if (incomeTransactions.length > 0) {
-          console.log('💰 Dashboard - Exemplo de transação INCOME:', incomeTransactions[0]);
-        }
-      }
+
 
       // Garantir que amount seja sempre número e comparar tipo como string
       // Usar comparação mais flexível para aceitar tanto string quanto enum
       const income = response.data
         .filter((t: any) => {
           const type = String(t.type || '').toUpperCase().trim();
-          const isIncome = type === 'INCOME' || 
-                           type === TransactionType.INCOME || 
-                           t.type === TransactionType.INCOME;
-          if (isIncome) {
-            console.log('✅ Transação INCOME encontrada:', { 
-              id: t.id, 
-              type: t.type, 
-              typeString: type,
-              amount: t.amount,
-              description: t.description 
-            });
-          }
+          const isIncome = type === 'INCOME' ||
+            type === TransactionType.INCOME ||
+            t.type === TransactionType.INCOME;
+
           return isIncome;
         })
         .reduce((sum: number, t: any) => {
           const amount = typeof t.amount === 'number' ? t.amount : Number(t.amount) || 0;
           return sum + amount;
         }, 0);
-      
+
       const expense = response.data
         .filter((t: any) => {
           const type = String(t.type || '').toUpperCase().trim();
-          return type === 'EXPENSE' || 
-                 type === TransactionType.EXPENSE || 
-                 t.type === TransactionType.EXPENSE;
+          return type === 'EXPENSE' ||
+            type === TransactionType.EXPENSE ||
+            t.type === TransactionType.EXPENSE;
         })
         .reduce((sum: number, t: any) => {
           const amount = typeof t.amount === 'number' ? t.amount : Number(t.amount) || 0;
           return sum + amount;
         }, 0);
 
-      console.log('💰 Dashboard - Receitas calculadas:', income);
-      console.log('💸 Dashboard - Despesas calculadas:', expense);
+      
 
       setTotalIncome(income);
       setTotalExpense(expense);
@@ -543,14 +509,14 @@ export const DashboardPage: React.FC = () => {
     }, 0);
   const previousMonthBalance = previousMonthIncome - previousMonthExpense;
 
-  const incomeChange = previousMonthIncome > 0 
-    ? ((selectedMonthIncome - previousMonthIncome) / previousMonthIncome) * 100 
+  const incomeChange = previousMonthIncome > 0
+    ? ((selectedMonthIncome - previousMonthIncome) / previousMonthIncome) * 100
     : 0;
-  const expenseChange = previousMonthExpense > 0 
-    ? ((selectedMonthExpense - previousMonthExpense) / previousMonthExpense) * 100 
+  const expenseChange = previousMonthExpense > 0
+    ? ((selectedMonthExpense - previousMonthExpense) / previousMonthExpense) * 100
     : 0;
-  const balanceChange = previousMonthBalance !== 0 
-    ? ((selectedMonthBalance - previousMonthBalance) / Math.abs(previousMonthBalance)) * 100 
+  const balanceChange = previousMonthBalance !== 0
+    ? ((selectedMonthBalance - previousMonthBalance) / Math.abs(previousMonthBalance)) * 100
     : 0;
 
   // Total de cartões (soma de todos os gastos)
@@ -564,11 +530,11 @@ export const DashboardPage: React.FC = () => {
       return format(tDate, 'yyyy-MM');
     })
   );
-  
+
   // Sempre incluir o mês atual, mesmo que não tenha transações
   const currentMonthStr = format(new Date(), 'yyyy-MM');
   monthsWithTransactionsSet.add(currentMonthStr);
-  
+
   const monthsWithTransactions = Array.from(monthsWithTransactionsSet)
     .map((monthStr) => {
       const [year, month] = monthStr.split('-');
@@ -663,12 +629,12 @@ export const DashboardPage: React.FC = () => {
     monthDate.setMonth(monthDate.getMonth() - (5 - i));
     const startDate = startOfMonth(monthDate);
     const endDate = endOfMonth(monthDate);
-    
+
     const monthTransactions = transactions.filter((t) => {
       const tDate = new Date(t.date);
       return tDate >= startDate && tDate <= endDate;
     });
-    
+
     const income = monthTransactions
       .filter((t) => {
         const type = String(t.type).toUpperCase();
@@ -687,7 +653,7 @@ export const DashboardPage: React.FC = () => {
         const amount = typeof t.amount === 'number' ? t.amount : Number(t.amount) || 0;
         return sum + amount;
       }, 0);
-    
+
     return {
       month: format(monthDate, 'MMM'),
       valor: income - expense, // Saldo do mês
@@ -828,17 +794,17 @@ export const DashboardPage: React.FC = () => {
               <AreaChart data={financialFlowData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorValor" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                <XAxis 
-                  dataKey="month" 
+                <XAxis
+                  dataKey="month"
                   stroke="#6b7280"
                   style={{ fontSize: '12px' }}
                 />
-                <YAxis 
+                <YAxis
                   stroke="#6b7280"
                   style={{ fontSize: '12px' }}
                   tickFormatter={(value) => {
@@ -847,7 +813,7 @@ export const DashboardPage: React.FC = () => {
                     return `R$ ${value}`;
                   }}
                 />
-                <Tooltip 
+                <Tooltip
                   formatter={(value: number) => formatCurrency(value)}
                   contentStyle={{
                     backgroundColor: '#fff',
@@ -856,11 +822,11 @@ export const DashboardPage: React.FC = () => {
                     padding: '8px 12px',
                   }}
                 />
-                <Area 
-                  type="monotone" 
-                  dataKey="valor" 
-                  stroke="#3b82f6" 
-                  fillOpacity={1} 
+                <Area
+                  type="monotone"
+                  dataKey="valor"
+                  stroke="#3b82f6"
+                  fillOpacity={1}
                   fill="url(#colorValor)"
                 />
               </AreaChart>
@@ -885,7 +851,7 @@ export const DashboardPage: React.FC = () => {
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip 
+                  <Tooltip
                     formatter={(value: number, name: string, props: any) => [
                       formatCurrency(value),
                       props.payload.name
@@ -897,13 +863,13 @@ export const DashboardPage: React.FC = () => {
                       padding: '8px 12px',
                     }}
                   />
-                  <Legend 
+                  <Legend
                     verticalAlign="middle"
                     align="right"
                     layout="vertical"
                     formatter={(value, entry: any) => (
-                      <span style={{ 
-                        color: entry.color, 
+                      <span style={{
+                        color: entry.color,
                         fontSize: '12px',
                         fontWeight: 500,
                       }}>
@@ -942,7 +908,7 @@ export const DashboardPage: React.FC = () => {
                 const transactionDate = new Date(transaction.date);
                 const isToday = format(transactionDate, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
                 const isYesterday = format(transactionDate, 'yyyy-MM-dd') === format(subDays(new Date(), 1), 'yyyy-MM-dd');
-                
+
                 let dateText = '';
                 if (isToday) {
                   dateText = `Hoje, ${format(transactionDate, 'HH:mm')}`;
