@@ -100,4 +100,45 @@ export interface ReportData {
   byCategory: Record<string, { income: number; expense: number }>;
 }
 
+export interface CreateTransactionData {
+  type: TransactionType;
+  category: TransactionCategory;
+  amount: number;
+  description?: string;
+  date?: Date;
+  purchaseDate?: Date;
+  installment?: string;
+  amountUSD?: number;
+  exchangeRate?: number;
+  redirectType?: string;
+  redirectTo?: string;
+  employeeId?: string;
+}
+
+export interface UpdateTransactionData {
+  type?: TransactionType;
+  category?: TransactionCategory;
+  amount?: number;
+  description?: string;
+  date?: Date;
+  purchaseDate?: Date;
+  installment?: string;
+  amountUSD?: number;
+  exchangeRate?: number;
+  redirectType?: string;
+  redirectTo?: string;
+  employeeId?: string;
+}
+
+export interface UploadResponse {
+  success: boolean;
+  transactionsCreated: number;
+  filename: string;
+  originalname: string;
+  requiresPassword?: boolean;
+  invalidPassword?: boolean;
+  error?: string;
+  message?: string;
+}
+
 

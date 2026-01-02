@@ -5,18 +5,21 @@ WORKDIR /app
 
 # Copiar package files
 COPY package*.json ./
+
+# Instalar dependências
+RUN npm ci --prefer-offline --no-audit
+
+# Copiar arquivos de configuração
 COPY tsconfig.json ./
 COPY tsconfig.node.json ./
 COPY vite.config.ts ./
-
-# Instalar dependências
-RUN npm ci
 
 # Copiar código source
 COPY src ./src
 COPY index.html ./
 
-# Build da aplicação
+# Build da aplicação (ignore warnings para deploy)
+ENV CI=false
 RUN npm run build
 
 # Stage 2: Runtime

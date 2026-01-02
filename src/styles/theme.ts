@@ -99,11 +99,18 @@ export const theme = {
     slow: '300ms ease-in-out',
   },
   breakpoints: {
+    xs: '480px',
     sm: '640px',
     md: '768px',
     lg: '1024px',
     xl: '1280px',
     '2xl': '1536px',
+  },
+  zIndex: {
+    dropdown: 1000,
+    modal: 1100,
+    toast: 1200,
+    tooltip: 1300,
   },
 };
 
