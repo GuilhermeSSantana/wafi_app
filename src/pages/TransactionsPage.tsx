@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
-import { transactionService, CreateTransactionData, UpdateTransactionData } from '@services/transaction.service';
+import { transactionService, CreateTransactionData } from '@services/transaction.service';
 import { uploadService } from '@services/upload.service';
 import { Transaction, TransactionType, TransactionCategory } from '@types';
 import { format, getYear, getMonth } from 'date-fns';
