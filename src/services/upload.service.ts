@@ -156,7 +156,7 @@ export const uploadService = {
         if (line.startsWith('data: ')) {
           try {
             const data = JSON.parse(line.slice(6));
-            console.log('📨 Evento SSE recebido:', data);
+           
             
             // Atualizar finalResult ANTES de chamar onProgress
             if (data.success !== undefined || data.requiresPassword !== undefined || data.invalidPassword !== undefined) {
@@ -186,7 +186,7 @@ export const uploadService = {
 
     // Se precisar de senha ou senha inválida, retornar informação especial (NÃO lançar erro)
     if (finalResult?.requiresPassword || finalResult?.invalidPassword) {
-      console.log('🔒 Retornando resultado de senha (sem erro):', finalResult);
+      
       return {
         success: false,
         requiresPassword: finalResult.requiresPassword || false,

@@ -943,7 +943,7 @@ export const TransactionsPage: React.FC = () => {
         date: formData.date ? new Date(formData.date).toISOString() : undefined,
       };
       
-      console.log('📤 Enviando dados de atualização:', updateData);
+     
       
       await transactionService.update(editingTransaction.id, updateData);
       setShowEditModal(false);
@@ -1164,7 +1164,6 @@ export const TransactionsPage: React.FC = () => {
           
           // Se precisar de senha, parar o processamento e mostrar campo de senha
           if (event.requiresPassword) {
-            console.log('🔒 Evento requiresPassword recebido no callback');
             setRequiresPassword(true);
             setUploading(false);
             showWarning(event.message || 'Esta planilha está protegida por senha');
@@ -1236,7 +1235,7 @@ export const TransactionsPage: React.FC = () => {
 
       // Verificar resultado final após o stream terminar
       if (result?.requiresPassword) {
-        console.log('🔒 Resultado final: requiresPassword = true');
+     
         setRequiresPassword(true);
         setUploading(false);
         setUploadProgress(0);
@@ -1300,7 +1299,7 @@ export const TransactionsPage: React.FC = () => {
     } catch (error: any) {
       // Não mostrar erro se já detectamos que precisa de senha
       if (requiresPassword) {
-        console.log('🔒 Erro capturado mas requiresPassword já está true, ignorando erro');
+        
         return;
       }
       const errorMessage = error.message || 'Erro ao processar arquivo';
