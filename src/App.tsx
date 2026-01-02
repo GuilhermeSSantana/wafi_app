@@ -10,6 +10,7 @@ import { DashboardPage } from '@pages/DashboardPage';
 import { TransactionsPage } from '@pages/TransactionsPage';
 import { ReportsPage } from '@pages/ReportsPage';
 import { WhatsAppPage } from '@pages/WhatsAppPage';
+import { CardsPage } from '@pages/CardsPage';
 import { Layout } from '@components/Layout';
 
 function App() {
@@ -56,6 +57,16 @@ function App() {
                 <PrivateRoute>
                   <Layout>
                     <WhatsAppPage />
+                  </Layout>
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/cards"
+              element={
+                <PrivateRoute>
+                  <Layout>
+                    <CardsPage />
                   </Layout>
                 </PrivateRoute>
               }

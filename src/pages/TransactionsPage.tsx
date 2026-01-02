@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
 import { transactionService, CreateTransactionData } from '@services/transaction.service';
 import { uploadService } from '@services/upload.service';
+import { cardService, Card as CardType } from '@services/card.service';
 import { Transaction, TransactionType, TransactionCategory } from '@types';
 import { format, getYear, getMonth } from 'date-fns';
 import { Card } from '@components/Card';
@@ -12,35 +13,63 @@ const Container = styled.div`
   display: flex;
   flex-direction: column;
   gap: ${({ theme }) => theme.spacing.xl};
+  max-width: 100%;
 `;
 
-const Header = styled.div`
+const PageHeader = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
-  gap: ${({ theme }) => theme.spacing.md};
+  gap: ${({ theme }) => theme.spacing.lg};
+  margin-bottom: ${({ theme }) => theme.spacing.xl};
 `;
 
 const Title = styled.h1`
-  font-size: 2rem;
-  font-weight: 700;
+  font-size: ${({ theme }) => theme.typography.fontSize['3xl']};
+  font-weight: ${({ theme }) => theme.typography.fontWeight.bold};
   color: ${({ theme }) => theme.colors.text};
   margin: 0;
+  letter-spacing: -0.02em;
+  line-height: ${({ theme }) => theme.typography.lineHeight.tight};
 `;
 
 const Button = styled.button`
-  padding: ${({ theme }) => theme.spacing.md} ${({ theme }) => theme.spacing.lg};
-  background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+  padding: ${({ theme }) => theme.spacing.md} ${({ theme }) => theme.spacing.xl};
+  background: ${({ theme }) => theme.colors.primaryGradient};
   color: white;
-  border-radius: ${({ theme }) => theme.borderRadius.md};
-  font-weight: 600;
+  border-radius: ${({ theme }) => theme.borderRadius.lg};
+  font-weight: ${({ theme }) => theme.typography.fontWeight.semibold};
+  font-size: ${({ theme }) => theme.typography.fontSize.sm};
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all ${({ theme }) => theme.transitions.normal};
+  box-shadow: ${({ theme }) => theme.shadows.sm};
+  letter-spacing: 0.01em;
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s;
+  }
 
   &:hover {
     transform: translateY(-2px);
-    box-shadow: ${({ theme }) => theme.shadows.md};
+    box-shadow: ${({ theme }) => theme.shadows.lg};
+    
+    &::before {
+      left: 100%;
+    }
+  }
+
+  &:active {
+    transform: translateY(0);
   }
 `;
 
@@ -51,46 +80,92 @@ const ModalOverlay = styled.div<{ $show: boolean }>`
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: ${({ theme }) => theme.colors.overlay};
+  backdrop-filter: blur(4px);
   align-items: center;
   justify-content: center;
   z-index: 1000;
   padding: ${({ theme }) => theme.spacing.md};
+  animation: ${({ $show }) => $show ? 'fadeIn' : 'fadeOut'} ${({ theme }) => theme.transitions.normal};
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes fadeOut {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+    }
+  }
 `;
 
 const ModalContent = styled.div`
-  background: white;
-  border-radius: ${({ theme }) => theme.borderRadius.xl};
-  padding: ${({ theme }) => theme.spacing.xl};
+  background: ${({ theme }) => theme.colors.surface};
+  border-radius: ${({ theme }) => theme.borderRadius['2xl']};
+  padding: ${({ theme }) => theme.spacing.xxl};
   width: 100%;
-  max-width: 500px;
+  max-width: 600px;
   max-height: 90vh;
   overflow-y: auto;
+  box-shadow: ${({ theme }) => theme.shadows['2xl']};
+  border: 1px solid ${({ theme }) => theme.colors.borderLight};
+  animation: slideUp ${({ theme }) => theme.transitions.normal};
+
+  @keyframes slideUp {
+    from {
+      transform: translateY(20px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
 `;
 
 const ModalHeader = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: ${({ theme }) => theme.spacing.lg};
+  margin-bottom: ${({ theme }) => theme.spacing.xl};
+  padding-bottom: ${({ theme }) => theme.spacing.lg};
+  border-bottom: 1px solid ${({ theme }) => theme.colors.borderLight};
 `;
 
 const ModalTitle = styled.h2`
-  font-size: 1.5rem;
-  font-weight: 700;
+  font-size: ${({ theme }) => theme.typography.fontSize['2xl']};
+  font-weight: ${({ theme }) => theme.typography.fontWeight.bold};
   color: ${({ theme }) => theme.colors.text};
   margin: 0;
+  letter-spacing: -0.01em;
 `;
 
 const CloseButton = styled.button`
-  background: none;
+  background: ${({ theme }) => theme.colors.backgroundSecondary};
   border: none;
-  font-size: 1.5rem;
+  width: 36px;
+  height: 36px;
+  border-radius: ${({ theme }) => theme.borderRadius.md};
+  font-size: 1.25rem;
   cursor: pointer;
   color: ${({ theme }) => theme.colors.textSecondary};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all ${({ theme }) => theme.transitions.normal};
   
   &:hover {
+    background: ${({ theme }) => theme.colors.border};
     color: ${({ theme }) => theme.colors.text};
+    transform: rotate(90deg);
   }
 `;
 
@@ -107,68 +182,116 @@ const FormGroup = styled.div`
 `;
 
 const Label = styled.label`
-  font-size: 0.875rem;
-  font-weight: 600;
+  font-size: ${({ theme }) => theme.typography.fontSize.sm};
+  font-weight: ${({ theme }) => theme.typography.fontWeight.semibold};
   color: ${({ theme }) => theme.colors.text};
+  margin-bottom: ${({ theme }) => theme.spacing.xs};
 `;
 
 const Input = styled.input`
-  padding: ${({ theme }) => theme.spacing.md};
-  border: 2px solid ${({ theme }) => theme.colors.border};
-  border-radius: ${({ theme }) => theme.borderRadius.md};
-  font-size: 1rem;
-  transition: all 0.2s;
+  padding: ${({ theme }) => theme.spacing.md} ${({ theme }) => theme.spacing.lg};
+  border: 1.5px solid ${({ theme }) => theme.colors.border};
+  border-radius: ${({ theme }) => theme.borderRadius.lg};
+  font-size: ${({ theme }) => theme.typography.fontSize.base};
+  transition: all ${({ theme }) => theme.transitions.normal};
+  background: ${({ theme }) => theme.colors.surface};
+  color: ${({ theme }) => theme.colors.text};
+
+  &::placeholder {
+    color: ${({ theme }) => theme.colors.textTertiary};
+  }
 
   &:focus {
     border-color: ${({ theme }) => theme.colors.primary};
     outline: none;
-    box-shadow: 0 0 0 3px ${({ theme }) => theme.colors.primary}20;
+    box-shadow: 0 0 0 4px ${({ theme }) => theme.colors.primaryLight}15;
+    background: ${({ theme }) => theme.colors.surface};
+  }
+
+  &:hover:not(:focus) {
+    border-color: ${({ theme }) => theme.colors.borderDark};
   }
 `;
 
 const Select = styled.select`
-  padding: ${({ theme }) => theme.spacing.md};
-  border: 2px solid ${({ theme }) => theme.colors.border};
-  border-radius: ${({ theme }) => theme.borderRadius.md};
-  font-size: 1rem;
-  transition: all 0.2s;
-  background: white;
+  padding: ${({ theme }) => theme.spacing.md} ${({ theme }) => theme.spacing.lg};
+  border: 1.5px solid ${({ theme }) => theme.colors.border};
+  border-radius: ${({ theme }) => theme.borderRadius.lg};
+  font-size: ${({ theme }) => theme.typography.fontSize.base};
+  transition: all ${({ theme }) => theme.transitions.normal};
+  background: ${({ theme }) => theme.colors.surface};
+  color: ${({ theme }) => theme.colors.text};
+  cursor: pointer;
 
   &:focus {
     border-color: ${({ theme }) => theme.colors.primary};
     outline: none;
-    box-shadow: 0 0 0 3px ${({ theme }) => theme.colors.primary}20;
+    box-shadow: 0 0 0 4px ${({ theme }) => theme.colors.primaryLight}15;
+  }
+
+  &:hover:not(:focus) {
+    border-color: ${({ theme }) => theme.colors.borderDark};
   }
 `;
 
 const TextArea = styled.textarea`
-  padding: ${({ theme }) => theme.spacing.md};
-  border: 2px solid ${({ theme }) => theme.colors.border};
-  border-radius: ${({ theme }) => theme.borderRadius.md};
-  font-size: 1rem;
+  padding: ${({ theme }) => theme.spacing.md} ${({ theme }) => theme.spacing.lg};
+  border: 1.5px solid ${({ theme }) => theme.colors.border};
+  border-radius: ${({ theme }) => theme.borderRadius.lg};
+  font-size: ${({ theme }) => theme.typography.fontSize.base};
   resize: vertical;
-  min-height: 100px;
-  transition: all 0.2s;
+  min-height: 120px;
+  transition: all ${({ theme }) => theme.transitions.normal};
+  background: ${({ theme }) => theme.colors.surface};
+  color: ${({ theme }) => theme.colors.text};
+  font-family: inherit;
+
+  &::placeholder {
+    color: ${({ theme }) => theme.colors.textTertiary};
+  }
 
   &:focus {
     border-color: ${({ theme }) => theme.colors.primary};
     outline: none;
-    box-shadow: 0 0 0 3px ${({ theme }) => theme.colors.primary}20;
+    box-shadow: 0 0 0 4px ${({ theme }) => theme.colors.primaryLight}15;
+  }
+
+  &:hover:not(:focus) {
+    border-color: ${({ theme }) => theme.colors.borderDark};
   }
 `;
 
 const FileUploadArea = styled.div<{ $dragging: boolean }>`
   border: 2px dashed ${({ $dragging, theme }) => $dragging ? theme.colors.primary : theme.colors.border};
-  border-radius: ${({ theme }) => theme.borderRadius.md};
-  padding: ${({ theme }) => theme.spacing.xl};
+  border-radius: ${({ theme }) => theme.borderRadius.xl};
+  padding: ${({ theme }) => theme.spacing.xxl};
   text-align: center;
-  background: ${({ $dragging, theme }) => $dragging ? theme.colors.primary + '10' : theme.colors.background};
+  background: ${({ $dragging, theme }) => $dragging ? theme.colors.primaryLight + '08' : theme.colors.backgroundSecondary};
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all ${({ theme }) => theme.transitions.normal};
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(37, 99, 235, 0.1), transparent);
+    transition: left 0.5s;
+  }
 
   &:hover {
     border-color: ${({ theme }) => theme.colors.primary};
-    background: ${({ theme }) => theme.colors.primary + '10'};
+    background: ${({ theme }) => theme.colors.primaryLight + '08'};
+    transform: translateY(-2px);
+    box-shadow: ${({ theme }) => theme.shadows.md};
+
+    &::before {
+      left: 100%;
+    }
   }
 `;
 
@@ -255,9 +378,31 @@ const ProgressBarContainer = styled.div`
 const ProgressBar = styled.div<{ $progress: number }>`
   height: 100%;
   width: ${({ $progress }) => $progress}%;
-  background: linear-gradient(90deg, #3b82f6 0%, #10b981 100%);
+  background: ${({ theme }) => theme.colors.primaryGradient};
   border-radius: ${({ theme }) => theme.borderRadius.sm};
-  transition: width 0.3s ease;
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    animation: shimmer 2s infinite;
+  }
+
+  @keyframes shimmer {
+    0% {
+      transform: translateX(-100%);
+    }
+    100% {
+      transform: translateX(100%);
+    }
+  }
 `;
 
 const ProgressText = styled.div`
@@ -322,23 +467,29 @@ const PasswordError = styled.div`
 
 const Tabs = styled.div`
   display: flex;
-  gap: ${({ theme }) => theme.spacing.md};
-  border-bottom: 2px solid ${({ theme }) => theme.colors.border};
-  margin-bottom: ${({ theme }) => theme.spacing.lg};
+  gap: ${({ theme }) => theme.spacing.xs};
+  border-bottom: 2px solid ${({ theme }) => theme.colors.borderLight};
+  margin-bottom: ${({ theme }) => theme.spacing.xl};
+  padding-bottom: ${({ theme }) => theme.spacing.xs};
 `;
 
 const Tab = styled.button<{ $active: boolean }>`
-  padding: ${({ theme }) => theme.spacing.md} ${({ theme }) => theme.spacing.lg};
-  background: none;
+  padding: ${({ theme }) => theme.spacing.md} ${({ theme }) => theme.spacing.xl};
+  background: ${({ $active, theme }) => $active ? theme.colors.primaryLight + '10' : 'transparent'};
   border: none;
   border-bottom: 3px solid ${({ $active, theme }) => $active ? theme.colors.primary : 'transparent'};
   color: ${({ $active, theme }) => $active ? theme.colors.primary : theme.colors.textSecondary};
-  font-weight: ${({ $active }) => $active ? '600' : '400'};
+  font-weight: ${({ $active, theme }) => $active ? theme.typography.fontWeight.semibold : theme.typography.fontWeight.medium};
+  font-size: ${({ theme }) => theme.typography.fontSize.sm};
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all ${({ theme }) => theme.transitions.normal};
+  border-radius: ${({ theme }) => theme.borderRadius.md} ${({ theme }) => theme.borderRadius.md} 0 0;
+  position: relative;
+  margin-bottom: -2px;
 
   &:hover {
     color: ${({ theme }) => theme.colors.primary};
+    background: ${({ $active, theme }) => $active ? theme.colors.primaryLight + '10' : theme.colors.backgroundSecondary};
   }
 `;
 
@@ -357,73 +508,96 @@ const CancelButton = styled.button`
   padding: ${({ theme }) => theme.spacing.md} ${({ theme }) => theme.spacing.lg};
   background: ${({ theme }) => theme.colors.surface};
   color: ${({ theme }) => theme.colors.text};
-  border: 2px solid ${({ theme }) => theme.colors.border};
-  border-radius: ${({ theme }) => theme.borderRadius.md};
-  font-weight: 600;
+  border: 1.5px solid ${({ theme }) => theme.colors.border};
+  border-radius: ${({ theme }) => theme.borderRadius.lg};
+  font-weight: ${({ theme }) => theme.typography.fontWeight.semibold};
+  font-size: ${({ theme }) => theme.typography.fontSize.sm};
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all ${({ theme }) => theme.transitions.normal};
 
   &:hover {
-    border-color: ${({ theme }) => theme.colors.textSecondary};
+    border-color: ${({ theme }) => theme.colors.borderDark};
+    background: ${({ theme }) => theme.colors.backgroundSecondary};
+    transform: translateY(-1px);
   }
 `;
 
 const Table = styled.table`
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
 `;
 
 const TableHeader = styled.thead`
-  background: ${({ theme }) => theme.colors.background};
+  background: ${({ theme }) => theme.colors.backgroundSecondary};
+  position: sticky;
+  top: 0;
+  z-index: 1;
 `;
 
 const TableRow = styled.tr`
-  border-bottom: 1px solid ${({ theme }) => theme.colors.border};
-  transition: background 0.2s;
+  border-bottom: 1px solid ${({ theme }) => theme.colors.borderLight};
+  transition: all ${({ theme }) => theme.transitions.normal};
 
   &:hover {
-    background: ${({ theme }) => theme.colors.background};
+    background: ${({ theme }) => theme.colors.backgroundSecondary};
+    transform: scale(1.001);
+  }
+
+  &:last-child {
+    border-bottom: none;
   }
 `;
 
 const TableHeaderCell = styled.th`
-  padding: ${({ theme }) => theme.spacing.md};
+  padding: ${({ theme }) => theme.spacing.lg} ${({ theme }) => theme.spacing.md};
   text-align: left;
-  font-weight: 600;
-  color: ${({ theme }) => theme.colors.text};
-  font-size: 0.875rem;
+  font-weight: ${({ theme }) => theme.typography.fontWeight.semibold};
+  color: ${({ theme }) => theme.colors.textSecondary};
+  font-size: ${({ theme }) => theme.typography.fontSize.xs};
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.08em;
+  font-weight: ${({ theme }) => theme.typography.fontWeight.semibold};
 `;
 
 const TableCell = styled.td`
-  padding: ${({ theme }) => theme.spacing.md};
+  padding: ${({ theme }) => theme.spacing.lg} ${({ theme }) => theme.spacing.md};
   color: ${({ theme }) => theme.colors.text};
+  font-size: ${({ theme }) => theme.typography.fontSize.sm};
+  vertical-align: middle;
 `;
 
 const Badge = styled.span<{ $type: TransactionType }>`
-  display: inline-block;
-  padding: 0.25rem 0.75rem;
-  background: ${({ $type, theme }) => $type === TransactionType.INCOME ? theme.colors.success + '20' : theme.colors.danger + '20'};
-  color: ${({ $type, theme }) => $type === TransactionType.INCOME ? theme.colors.success : theme.colors.danger};
-  border-radius: ${({ theme }) => theme.borderRadius.sm};
-  font-size: 0.75rem;
-  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  padding: ${({ theme }) => theme.spacing.xs} ${({ theme }) => theme.spacing.md};
+  background: ${({ $type, theme }) => $type === TransactionType.INCOME ? theme.colors.success + '15' : theme.colors.danger + '15'};
+  color: ${({ $type, theme }) => $type === TransactionType.INCOME ? theme.colors.successDark : theme.colors.dangerDark};
+  border-radius: ${({ theme }) => theme.borderRadius.md};
+  font-size: ${({ theme }) => theme.typography.fontSize.xs};
+  font-weight: ${({ theme }) => theme.typography.fontWeight.semibold};
+  border: 1px solid ${({ $type, theme }) => $type === TransactionType.INCOME ? theme.colors.success + '30' : theme.colors.danger + '30'};
+  letter-spacing: 0.02em;
 `;
 
 const CategoryBadge = styled.span`
-  display: inline-block;
-  padding: 0.25rem 0.75rem;
-  background: ${({ theme }) => theme.colors.primary}20;
-  color: ${({ theme }) => theme.colors.primary};
-  border-radius: ${({ theme }) => theme.borderRadius.sm};
-  font-size: 0.75rem;
-  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  padding: ${({ theme }) => theme.spacing.xs} ${({ theme }) => theme.spacing.md};
+  background: ${({ theme }) => theme.colors.primaryLight}15;
+  color: ${({ theme }) => theme.colors.primaryDark};
+  border-radius: ${({ theme }) => theme.borderRadius.md};
+  font-size: ${({ theme }) => theme.typography.fontSize.xs};
+  font-weight: ${({ theme }) => theme.typography.fontWeight.semibold};
+  border: 1px solid ${({ theme }) => theme.colors.primaryLight}30;
+  letter-spacing: 0.02em;
 `;
 
 const Amount = styled.span<{ $type: TransactionType }>`
-  font-weight: 700;
-  color: ${({ $type, theme }) => $type === TransactionType.INCOME ? theme.colors.success : theme.colors.danger};
+  font-weight: ${({ theme }) => theme.typography.fontWeight.bold};
+  color: ${({ $type, theme }) => $type === TransactionType.INCOME ? theme.colors.successDark : theme.colors.dangerDark};
+  font-size: ${({ theme }) => theme.typography.fontSize.base};
+  letter-spacing: -0.01em;
 `;
 
 const formatCurrency = (value: number): string => {
@@ -454,53 +628,70 @@ const formatCategory = (category: string): string => {
 };
 
 const ActionButton = styled.button<{ $variant?: 'edit' | 'delete' | 'redirect' | 'installments' }>`
-  padding: 0.375rem 0.75rem;
-  border: none;
-  border-radius: ${({ theme }) => theme.borderRadius.sm};
-  font-size: 0.75rem;
-  font-weight: 600;
+  padding: ${({ theme }) => theme.spacing.xs} ${({ theme }) => theme.spacing.md};
+  border: 1px solid transparent;
+  border-radius: ${({ theme }) => theme.borderRadius.md};
+  font-size: ${({ theme }) => theme.typography.fontSize.xs};
+  font-weight: ${({ theme }) => theme.typography.fontWeight.semibold};
   cursor: pointer;
-  transition: all 0.2s;
-  margin-right: 0.5rem;
+  transition: all ${({ theme }) => theme.transitions.normal};
+  margin-right: ${({ theme }) => theme.spacing.sm};
+  letter-spacing: 0.01em;
 
   ${({ $variant, theme }) => {
     if ($variant === 'edit') {
       return `
-        background: ${theme.colors.primary}20;
-        color: ${theme.colors.primary};
+        background: ${theme.colors.primaryLight}15;
+        color: ${theme.colors.primaryDark};
+        border-color: ${theme.colors.primaryLight}30;
         &:hover {
           background: ${theme.colors.primary};
           color: white;
+          border-color: ${theme.colors.primary};
+          transform: translateY(-1px);
+          box-shadow: ${theme.shadows.sm};
         }
       `;
     }
     if ($variant === 'delete') {
       return `
-        background: ${theme.colors.danger}20;
-        color: ${theme.colors.danger};
+        background: ${theme.colors.dangerLight}15;
+        color: ${theme.colors.dangerDark};
+        border-color: ${theme.colors.dangerLight}30;
         &:hover {
           background: ${theme.colors.danger};
           color: white;
+          border-color: ${theme.colors.danger};
+          transform: translateY(-1px);
+          box-shadow: ${theme.shadows.sm};
         }
       `;
     }
     if ($variant === 'redirect') {
       return `
-        background: ${theme.colors.warning}20;
-        color: ${theme.colors.warning};
+        background: ${theme.colors.warning}15;
+        color: ${theme.colors.warningDark};
+        border-color: ${theme.colors.warning}30;
         &:hover {
           background: ${theme.colors.warning};
           color: white;
+          border-color: ${theme.colors.warning};
+          transform: translateY(-1px);
+          box-shadow: ${theme.shadows.sm};
         }
       `;
     }
     if ($variant === 'installments') {
       return `
-        background: #10b98120;
-        color: #10b981;
+        background: ${theme.colors.success}15;
+        color: ${theme.colors.successDark};
+        border-color: ${theme.colors.success}30;
         &:hover {
-          background: #10b981;
+          background: ${theme.colors.success};
           color: white;
+          border-color: ${theme.colors.success};
+          transform: translateY(-1px);
+          box-shadow: ${theme.shadows.sm};
         }
       `;
     }
@@ -509,6 +700,86 @@ const ActionButton = styled.button<{ $variant?: 'edit' | 'delete' | 'redirect' |
 
 const ActionsCell = styled(TableCell)`
   white-space: nowrap;
+`;
+
+const MonthGroup = styled.div`
+  margin-bottom: ${({ theme }) => theme.spacing.lg};
+`;
+
+const MonthHeader = styled.div<{ $isExpanded: boolean }>`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: ${({ theme }) => theme.spacing.lg};
+  background: ${({ theme }) => theme.colors.surface};
+  border: 1px solid ${({ theme }) => theme.colors.borderLight};
+  border-radius: ${({ theme }) => theme.borderRadius.xl};
+  cursor: pointer;
+  transition: all ${({ theme }) => theme.transitions.normal};
+  margin-bottom: ${({ $isExpanded, theme }) => ($isExpanded ? theme.spacing.md : 0)};
+  box-shadow: ${({ theme }) => theme.shadows.sm};
+
+  &:hover {
+    background: ${({ theme }) => theme.colors.backgroundSecondary};
+    border-color: ${({ theme }) => theme.colors.border};
+    box-shadow: ${({ theme }) => theme.shadows.md};
+    transform: translateY(-2px);
+  }
+`;
+
+const MonthHeaderLeft = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${({ theme }) => theme.spacing.md};
+  flex-wrap: wrap;
+`;
+
+const MonthTitle = styled.span`
+  font-size: ${({ theme }) => theme.typography.fontSize.lg};
+  font-weight: ${({ theme }) => theme.typography.fontWeight.semibold};
+  color: ${({ theme }) => theme.colors.text};
+`;
+
+const MonthCount = styled.span`
+  font-size: ${({ theme }) => theme.typography.fontSize.sm};
+  color: ${({ theme }) => theme.colors.textSecondary};
+  font-weight: ${({ theme }) => theme.typography.fontWeight.medium};
+  padding: ${({ theme }) => theme.spacing.xs} ${({ theme }) => theme.spacing.md};
+  background: ${({ theme }) => theme.colors.backgroundSecondary};
+  border-radius: ${({ theme }) => theme.borderRadius.md};
+`;
+
+const MonthHeaderRight = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${({ theme }) => theme.spacing.lg};
+`;
+
+const MonthTotal = styled.span<{ $isPositive: boolean }>`
+  font-size: ${({ theme }) => theme.typography.fontSize.lg};
+  font-weight: ${({ theme }) => theme.typography.fontWeight.bold};
+  color: ${({ $isPositive, theme }) => ($isPositive ? theme.colors.successDark : theme.colors.dangerDark)};
+  letter-spacing: -0.01em;
+`;
+
+const ExpandIcon = styled.span<{ $isExpanded: boolean }>`
+  font-size: ${({ theme }) => theme.typography.fontSize.base};
+  color: ${({ theme }) => theme.colors.textSecondary};
+  transition: transform ${({ theme }) => theme.transitions.normal};
+  transform: ${({ $isExpanded }) => ($isExpanded ? 'rotate(180deg)' : 'rotate(0deg)')};
+`;
+
+const TransactionTypeBadge = styled.span<{ $isDetailed: boolean }>`
+  display: inline-flex;
+  align-items: center;
+  padding: ${({ theme }) => theme.spacing.xs} ${({ theme }) => theme.spacing.sm};
+  border-radius: ${({ theme }) => theme.borderRadius.md};
+  font-size: ${({ theme }) => theme.typography.fontSize.xs};
+  font-weight: ${({ theme }) => theme.typography.fontWeight.semibold};
+  background: ${({ $isDetailed, theme }) => ($isDetailed ? theme.colors.primaryLight + '15' : theme.colors.warning + '15')};
+  color: ${({ $isDetailed, theme }) => ($isDetailed ? theme.colors.primaryDark : theme.colors.warningDark)};
+  border: 1px solid ${({ $isDetailed, theme }) => ($isDetailed ? theme.colors.primaryLight + '30' : theme.colors.warning + '30')};
+  letter-spacing: 0.01em;
 `;
 
 export const TransactionsPage: React.FC = () => {
@@ -535,6 +806,8 @@ export const TransactionsPage: React.FC = () => {
   });
   const [selectedYear, setSelectedYear] = useState(() => new Date().getFullYear());
   const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set());
+  const [cards, setCards] = useState<CardType[]>([]);
+  const [selectedCardId, setSelectedCardId] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState<CreateTransactionData>({
     type: TransactionType.EXPENSE,
@@ -562,7 +835,17 @@ export const TransactionsPage: React.FC = () => {
 
   useEffect(() => {
     loadTransactions();
+    loadCards();
   }, []);
+
+  const loadCards = async () => {
+    try {
+      const cardsList = await cardService.list();
+      setCards(cardsList);
+    } catch (error) {
+      console.error('Erro ao carregar cartões:', error);
+    }
+  };
 
   const loadTransactions = async () => {
     try {
@@ -579,7 +862,12 @@ export const TransactionsPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await transactionService.create(formData);
+      // Converter Date para string ISO antes de enviar
+      const createData = {
+        ...formData,
+        date: formData.date ? new Date(formData.date).toISOString() : undefined,
+      };
+      await transactionService.create(createData);
       setShowModal(false);
       resetFormData();
       loadTransactions();
@@ -602,6 +890,24 @@ export const TransactionsPage: React.FC = () => {
     setActiveTab('manual');
   };
 
+  const resetModalState = () => {
+    resetFormData();
+    setUploading(false);
+    setUploadProgress(0);
+    setUploadMessage('');
+    setRequiresPassword(false);
+    setInvalidPassword(false);
+    setPassword('');
+    setDragging(false);
+    setSelectedCardId(''); // Resetar seleção de cartão
+    // Resetar mês de referência para o mês atual
+    setReferenceMonth(new Date().getMonth() + 1);
+    // Limpar input de arquivo se existir
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   const handleEdit = (transaction: Transaction) => {
     setEditingTransaction(transaction);
     setFormData({
@@ -619,13 +925,34 @@ export const TransactionsPage: React.FC = () => {
     e.preventDefault();
     if (!editingTransaction) return;
     try {
-      await transactionService.update(editingTransaction.id, formData);
+      // Garantir que amount é um número válido
+      let amount = formData.amount;
+      if (typeof amount === 'string') {
+        // Se for string, converter vírgula para ponto e parsear
+        amount = parseFloat(amount.replace(',', '.')) || 0;
+      }
+      if (isNaN(amount) || amount <= 0) {
+        showError('Por favor, insira um valor válido maior que zero');
+        return;
+      }
+
+      // Converter Date para string ISO antes de enviar
+      const updateData = {
+        ...formData,
+        amount: amount,
+        date: formData.date ? new Date(formData.date).toISOString() : undefined,
+      };
+      
+      console.log('📤 Enviando dados de atualização:', updateData);
+      
+      await transactionService.update(editingTransaction.id, updateData);
       setShowEditModal(false);
       setEditingTransaction(null);
       resetFormData();
       loadTransactions();
       showSuccess('Transação atualizada com sucesso!');
     } catch (error: any) {
+      console.error('❌ Erro ao atualizar transação:', error);
       showError(error.message || 'Erro ao atualizar transação');
     }
   };
@@ -840,17 +1167,26 @@ export const TransactionsPage: React.FC = () => {
             console.log('🔒 Evento requiresPassword recebido no callback');
             setRequiresPassword(true);
             setUploading(false);
+            showWarning(event.message || 'Esta planilha está protegida por senha');
             return; // Parar aqui, não processar mais eventos
           }
           
           // Se senha inválida, mostrar erro
           if (event.invalidPassword) {
             setInvalidPassword(true);
+            showError(event.message || 'Senha incorreta. Tente novamente.');
             return;
           }
           
-          // Se sucesso, finalizar
-          if (event.success === true && event.transactionsCreated !== undefined) {
+          // Verificar se há erro na mensagem
+          if (event.error || (event.message && event.message.includes('❌'))) {
+            showError(event.error || event.message || 'Erro ao processar arquivo');
+            return;
+          }
+          
+          // Se sucesso com transações criadas, mostrar toast de sucesso
+          if (event.success === true && event.transactionsCreated !== undefined && event.transactionsCreated > 0) {
+            showSuccess(event.message || `✅ ${event.transactionsCreated} transação(ões) criada(s) com sucesso!`);
             // Fechar modal e recarregar imediatamente
             setUploadedFile(null);
             setShowModal(false);
@@ -860,10 +1196,42 @@ export const TransactionsPage: React.FC = () => {
             setRequiresPassword(false);
             setPassword('');
             loadTransactions(); // Recarregar transações
+            return;
+          }
+          
+          // Se sucesso mas sem transações criadas
+          if (event.success === true && event.transactionsCreated === 0) {
+            showInfo(event.message || 'Processamento concluído, mas nenhuma nova transação foi criada.');
+            // Fechar modal e recarregar imediatamente
+            setUploadedFile(null);
+            setShowModal(false);
+            setUploading(false);
+            setUploadProgress(0);
+            setUploadMessage('');
+            setRequiresPassword(false);
+            setPassword('');
+            loadTransactions(); // Recarregar transações
+            return;
+          }
+          
+          // Se progresso chegou a 100% e há mensagem
+          if (event.progress === 100 && event.message) {
+            if (event.message.includes('❌') || event.message.includes('Erro') || event.error) {
+              showError(event.error || event.message);
+            } else if (event.message.includes('✅') || event.message.includes('sucesso')) {
+              if (event.transactionsCreated && event.transactionsCreated > 0) {
+                showSuccess(event.message);
+              } else {
+                showInfo(event.message);
+              }
+            } else if (event.message.includes('⚠️') || event.message.includes('ℹ️')) {
+              showInfo(event.message);
+            }
           }
         },
         undefined, // password (será definido depois se necessário)
-        referenceMonthStr // referenceMonth sempre enviado (formato "YYYY-MM")
+        referenceMonthStr, // referenceMonth sempre enviado (formato "YYYY-MM")
+        selectedCardId || undefined // cardId se selecionado
       );
 
       // Verificar resultado final após o stream terminar
@@ -872,18 +1240,42 @@ export const TransactionsPage: React.FC = () => {
         setRequiresPassword(true);
         setUploading(false);
         setUploadProgress(0);
+        showWarning(result.message || 'Esta planilha está protegida por senha');
         return;
       }
 
       if (result?.invalidPassword) {
         setInvalidPassword(true);
         setUploading(false);
+        showError(result.message || 'Senha incorreta. Tente novamente.');
+        return;
+      }
+
+      // Verificar se há erro no resultado
+      if (result?.error || (result?.success === false && result?.message)) {
+        const errorMessage = result.error || result.message || 'Erro ao processar arquivo';
+        setUploadMessage(`❌ ${errorMessage}`);
+        setUploadProgress(0);
+        showError(errorMessage);
+        setTimeout(() => {
+          setUploadedFile(null);
+          setUploading(false);
+          setUploadMessage('');
+        }, 3000);
         return;
       }
 
       if (result?.success) {
         setUploadProgress(100);
-        setUploadMessage(`✅ ${result.transactionsCreated} transação(ões) criada(s) com sucesso!`);
+        const successMessage = result.transactionsCreated > 0 
+          ? `✅ ${result.transactionsCreated} transação(ões) criada(s) com sucesso!`
+          : result.message || 'Processamento concluído com sucesso!';
+        setUploadMessage(successMessage);
+        if (result.transactionsCreated > 0) {
+          showSuccess(successMessage);
+        } else {
+          showInfo(result.message || 'Processamento concluído, mas nenhuma nova transação foi criada.');
+        }
         // Fechar modal e recarregar imediatamente
         setUploadedFile(null);
         setShowModal(false);
@@ -893,6 +1285,17 @@ export const TransactionsPage: React.FC = () => {
         setRequiresPassword(false);
         setPassword('');
         loadTransactions(); // Recarregar transações
+      } else {
+        // Caso não tenha sucesso explícito, verificar se há mensagem final
+        if (result?.message) {
+          if (result.message.includes('❌') || result.message.includes('Erro')) {
+            showError(result.message);
+          } else if (result.message.includes('✅') || result.message.includes('sucesso')) {
+            showSuccess(result.message);
+          } else {
+            showInfo(result.message);
+          }
+        }
       }
     } catch (error: any) {
       // Não mostrar erro se já detectamos que precisa de senha
@@ -900,8 +1303,10 @@ export const TransactionsPage: React.FC = () => {
         console.log('🔒 Erro capturado mas requiresPassword já está true, ignorando erro');
         return;
       }
-      setUploadMessage(`❌ Erro: ${error.message || 'Erro ao processar arquivo'}`);
+      const errorMessage = error.message || 'Erro ao processar arquivo';
+      setUploadMessage(`❌ Erro: ${errorMessage}`);
       setUploadProgress(0);
+      showError(errorMessage);
       setTimeout(() => {
         setUploadedFile(null);
         setUploading(false);
@@ -937,9 +1342,19 @@ export const TransactionsPage: React.FC = () => {
           if (event.invalidPassword) {
             setInvalidPassword(true);
             setUploading(false);
+            showError(event.message || 'Senha incorreta. Tente novamente.');
+            return;
           }
           
-          if (event.success === true && event.transactionsCreated !== undefined) {
+          // Verificar se há erro na mensagem
+          if (event.error || (event.message && event.message.includes('❌'))) {
+            showError(event.error || event.message || 'Erro ao processar arquivo');
+            return;
+          }
+          
+          // Se sucesso com transações criadas, mostrar toast de sucesso
+          if (event.success === true && event.transactionsCreated !== undefined && event.transactionsCreated > 0) {
+            showSuccess(event.message || `✅ ${event.transactionsCreated} transação(ões) criada(s) com sucesso!`);
             // Fechar modal e recarregar imediatamente
             setUploadedFile(null);
             setShowModal(false);
@@ -949,21 +1364,62 @@ export const TransactionsPage: React.FC = () => {
             setRequiresPassword(false);
             setPassword('');
             loadTransactions(); // Recarregar transações
+            return;
+          }
+          
+          // Se sucesso mas sem transações criadas
+          if (event.success === true && event.transactionsCreated === 0) {
+            showInfo(event.message || 'Processamento concluído, mas nenhuma nova transação foi criada.');
+            // Fechar modal e recarregar imediatamente
+            setUploadedFile(null);
+            setShowModal(false);
+            setUploading(false);
+            setUploadProgress(0);
+            setUploadMessage('');
+            setRequiresPassword(false);
+            setPassword('');
+            loadTransactions(); // Recarregar transações
+            return;
+          }
+          
+          // Se progresso chegou a 100% e há mensagem
+          if (event.progress === 100 && event.message) {
+            if (event.message.includes('❌') || event.message.includes('Erro') || event.error) {
+              showError(event.error || event.message);
+            } else if (event.message.includes('✅') || event.message.includes('sucesso')) {
+              if (event.transactionsCreated && event.transactionsCreated > 0) {
+                showSuccess(event.message);
+              } else {
+                showInfo(event.message);
+              }
+            } else if (event.message.includes('⚠️') || event.message.includes('ℹ️')) {
+              showInfo(event.message);
+            }
           }
         },
         password,
-        referenceMonthStr // referenceMonth sempre enviado (formato "YYYY-MM")
+        referenceMonthStr, // referenceMonth sempre enviado (formato "YYYY-MM")
+        selectedCardId || undefined // cardId se selecionado
       );
 
       if (result.invalidPassword) {
         setInvalidPassword(true);
         setUploading(false);
+        showError('Senha incorreta. Tente novamente.');
         return;
       }
 
       if (result.success) {
         setUploadProgress(100);
-        setUploadMessage(`✅ ${result.transactionsCreated} transação(ões) criada(s) com sucesso!`);
+        const successMessage = result.transactionsCreated > 0 
+          ? `✅ ${result.transactionsCreated} transação(ões) criada(s) com sucesso!`
+          : 'Processamento concluído com sucesso!';
+        setUploadMessage(successMessage);
+        if (result.transactionsCreated > 0) {
+          showSuccess(successMessage);
+        } else {
+          showInfo('Processamento concluído, mas nenhuma nova transação foi criada.');
+        }
         // Fechar modal e recarregar imediatamente
         setUploadedFile(null);
         setShowModal(false);
@@ -975,9 +1431,11 @@ export const TransactionsPage: React.FC = () => {
         loadTransactions(); // Recarregar transações
       }
     } catch (error: any) {
-      setUploadMessage(`❌ Erro: ${error.message || 'Erro ao processar arquivo'}`);
+      const errorMessage = error.message || 'Erro ao processar arquivo';
+      setUploadMessage(`❌ Erro: ${errorMessage}`);
       setUploadProgress(0);
       setUploading(false);
+      showError(errorMessage);
     }
   };
 
@@ -1020,10 +1478,12 @@ export const TransactionsPage: React.FC = () => {
     new Set(transactions.map(t => getYear(new Date(t.date))))
   ).sort((a, b) => b - a);
 
-  // Filtrar transações pelo ano selecionado
-  const filteredTransactions = transactions.filter(t => 
-    getYear(new Date(t.date)) === selectedYear
-  );
+  // Filtrar transações pelo ano selecionado e cartão (se houver)
+  const filteredTransactions = transactions.filter(t => {
+    const matchesYear = getYear(new Date(t.date)) === selectedYear;
+    const matchesCard = !selectedCardId || (t as any).cardId === selectedCardId;
+    return matchesYear && matchesCard;
+  });
 
   // Calcular total do mês
   const calculateMonthTotal = (monthTransactions: Transaction[]): number => {
@@ -1046,13 +1506,13 @@ export const TransactionsPage: React.FC = () => {
 
   return (
     <Container>
-      <Header>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+      <PageHeader>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
           <Title>Transações</Title>
           <Select 
             value={selectedYear} 
             onChange={(e) => setSelectedYear(parseInt(e.target.value, 10))}
-            style={{ width: '120px' }}
+            style={{ width: '120px', fontSize: '0.875rem' }}
           >
             {availableYears.length > 0 ? (
               availableYears.map(year => (
@@ -1063,8 +1523,11 @@ export const TransactionsPage: React.FC = () => {
             )}
           </Select>
         </div>
-        <Button onClick={() => setShowModal(true)}>+ Nova Transação</Button>
-      </Header>
+        <Button onClick={() => {
+          resetModalState();
+          setShowModal(true);
+        }}>+ Nova Transação</Button>
+      </PageHeader>
 
       <Card>
         {loading ? (
@@ -1116,53 +1579,28 @@ export const TransactionsPage: React.FC = () => {
                   const isPositive = monthTotal >= 0;
 
                   return (
-                    <div key={monthKey} style={{ marginBottom: '1rem' }}>
-                      <div
+                    <MonthGroup key={monthKey} style={{ marginBottom: '1rem' }}>
+                      <MonthHeader
                         onClick={() => toggleMonth(monthKey)}
-                        style={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          padding: '1rem',
-                          background: '#f9fafb',
-                          border: '1px solid #e5e7eb',
-                          borderRadius: '8px',
-                          cursor: 'pointer',
-                          transition: 'all 0.2s',
-                          marginBottom: isExpanded ? '1rem' : 0,
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.background = '#f3f4f6';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.background = '#f9fafb';
-                        }}
+                        $isExpanded={isExpanded}
                       >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                          <span style={{ fontSize: '1.25rem', fontWeight: 600, color: '#1f2937' }}>
+                        <MonthHeaderLeft>
+                          <MonthTitle>
                             {monthNames[group.month]} de {group.year}
-                          </span>
-                          <span style={{ 
-                            fontSize: '0.875rem', 
-                            color: '#6b7280',
-                            fontWeight: 500
-                          }}>
-                            ({group.transactions.length} {group.transactions.length === 1 ? 'transação' : 'transações'})
-                          </span>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                          <span style={{
-                            fontSize: '1.125rem',
-                            fontWeight: 700,
-                            color: isPositive ? '#10b981' : '#ef4444'
-                          }}>
+                          </MonthTitle>
+                          <MonthCount>
+                            {group.transactions.length} {group.transactions.length === 1 ? 'transação' : 'transações'}
+                          </MonthCount>
+                        </MonthHeaderLeft>
+                        <MonthHeaderRight>
+                          <MonthTotal $isPositive={isPositive}>
                             {isPositive ? '+' : ''}{formatCurrency(Math.abs(monthTotal))}
-                          </span>
-                          <span style={{ fontSize: '1.25rem', color: '#6b7280' }}>
+                          </MonthTotal>
+                          <ExpandIcon $isExpanded={isExpanded}>
                             {isExpanded ? '▼' : '▶'}
-                          </span>
-                        </div>
-                      </div>
+                          </ExpandIcon>
+                        </MonthHeaderRight>
+                      </MonthHeader>
                       {isExpanded && (
                         <Table>
                           <TableHeader>
@@ -1178,76 +1616,69 @@ export const TransactionsPage: React.FC = () => {
                           </TableHeader>
                           <tbody>
                             {group.transactions.map((transaction) => (
-                          <TableRow key={transaction.id}>
-                            <TableCell>
-                              {transaction.purchaseDate 
-                                ? format(new Date(transaction.purchaseDate), 'dd/MM/yyyy')
-                                : format(new Date(transaction.date), 'dd/MM/yyyy')}
-                            </TableCell>
-                            <TableCell>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                <span>{transaction.description || '-'}</span>
-                                {transaction.metadata && typeof transaction.metadata === 'object' && 'isDetailed' in transaction.metadata && (
-                                  <span style={{
-                                    fontSize: '0.75rem',
-                                    padding: '0.125rem 0.5rem',
-                                    borderRadius: '12px',
-                                    fontWeight: 600,
-                                    backgroundColor: (transaction.metadata as any).isDetailed ? '#dbeafe' : '#fef3c7',
-                                    color: (transaction.metadata as any).isDetailed ? '#1e40af' : '#92400e'
-                                  }}>
-                                    {(transaction.metadata as any).isDetailed ? '📊 Detalhada' : '📄 Resumida'}
-                                  </span>
-                                )}
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <CategoryBadge>{formatCategory(transaction.category)}</CategoryBadge>
-                            </TableCell>
-                            <TableCell>{transaction.installment || '-'}</TableCell>
-                            <TableCell style={{ textAlign: 'right' }}>
-                              <Amount $type={transaction.type}>
-                                {transaction.type === TransactionType.INCOME ? '+' : '-'} {formatCurrency(transaction.amount)}
-                              </Amount>
-                            </TableCell>
-                            <TableCell>
-                              <Badge $type={transaction.type}>
-                                {transaction.type === TransactionType.INCOME ? 'Receita' : 'Despesa'}
-                              </Badge>
-                              {transaction.redirectType && transaction.redirectTo && (
-                                <div style={{ fontSize: '0.75rem', color: '#f59e0b', marginTop: '0.25rem' }}>
-                                  {transaction.redirectType}: {transaction.redirectTo}
-                                </div>
-                              )}
-                            </TableCell>
-                            <ActionsCell>
-                              <ActionButton $variant="edit" onClick={() => handleEdit(transaction)}>
-                                ✏️ Editar
-                              </ActionButton>
-                              <ActionButton $variant="redirect" onClick={() => handleRedirect(transaction)}>
-                                🔀 Redirecionar
-                              </ActionButton>
-                              {transaction.installment && 
-                               transaction.installment !== 'Única' && 
-                               hasMissingInstallments(transaction) && (
-                                 <ActionButton 
-                                   $variant="installments" 
-                                   onClick={() => handleGenerateInstallments(transaction)}
-                                   title="Gerar parcelas futuras"
-                                 >
-                                   📅 Gerar Parcelas
-                                 </ActionButton>
-                               )}
-                              <ActionButton $variant="delete" onClick={() => handleDelete(transaction.id)}>
-                                🗑️ Deletar
-                              </ActionButton>
-                            </ActionsCell>
-                          </TableRow>
+                              <TableRow key={transaction.id}>
+                                <TableCell>
+                                  {transaction.purchaseDate 
+                                    ? format(new Date(transaction.purchaseDate), 'dd/MM/yyyy')
+                                    : format(new Date(transaction.date), 'dd/MM/yyyy')}
+                                </TableCell>
+                                <TableCell>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                    <span style={{ fontWeight: 500 }}>{transaction.description || '-'}</span>
+                                    {transaction.metadata && typeof transaction.metadata === 'object' && 'isDetailed' in transaction.metadata && (
+                                      <TransactionTypeBadge $isDetailed={(transaction.metadata as any).isDetailed}>
+                                        {(transaction.metadata as any).isDetailed ? '📊 Detalhada' : '📄 Resumida'}
+                                      </TransactionTypeBadge>
+                                    )}
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <CategoryBadge>{formatCategory(transaction.category)}</CategoryBadge>
+                                </TableCell>
+                                <TableCell>{transaction.installment || '-'}</TableCell>
+                                <TableCell style={{ textAlign: 'right' }}>
+                                  <Amount $type={transaction.type}>
+                                    {transaction.type === TransactionType.INCOME ? '+' : '-'} {formatCurrency(transaction.amount)}
+                                  </Amount>
+                                </TableCell>
+                                <TableCell>
+                                  <Badge $type={transaction.type}>
+                                    {transaction.type === TransactionType.INCOME ? 'Receita' : 'Despesa'}
+                                  </Badge>
+                                  {transaction.redirectType && transaction.redirectTo && (
+                                    <div style={{ fontSize: '0.75rem', color: '#f59e0b', marginTop: '0.25rem' }}>
+                                      {transaction.redirectType}: {transaction.redirectTo}
+                                    </div>
+                                  )}
+                                </TableCell>
+                                <ActionsCell>
+                                  <ActionButton $variant="edit" onClick={() => handleEdit(transaction)}>
+                                    ✏️ Editar
+                                  </ActionButton>
+                                  <ActionButton $variant="redirect" onClick={() => handleRedirect(transaction)}>
+                                    🔀 Redirecionar
+                                  </ActionButton>
+                                  {transaction.installment && 
+                                   transaction.installment !== 'Única' && 
+                                   hasMissingInstallments(transaction) && (
+                                     <ActionButton 
+                                       $variant="installments" 
+                                       onClick={() => handleGenerateInstallments(transaction)}
+                                       title="Gerar parcelas futuras"
+                                     >
+                                       📅 Gerar Parcelas
+                                     </ActionButton>
+                                   )}
+                                  <ActionButton $variant="delete" onClick={() => handleDelete(transaction.id)}>
+                                    🗑️ Deletar
+                                  </ActionButton>
+                                </ActionsCell>
+                              </TableRow>
                             ))}
                           </tbody>
                         </Table>
                       )}
-                    </div>
+                    </MonthGroup>
                   );
                 })}
               </div>
@@ -1258,24 +1689,14 @@ export const TransactionsPage: React.FC = () => {
 
       <ModalOverlay $show={showModal} onClick={() => {
         setShowModal(false);
-        setUploadedFile(null);
-        setActiveTab('manual');
-        setRequiresPassword(false);
-        setPassword('');
-        // Resetar mês de referência para o mês atual
-        setReferenceMonth(new Date().getMonth() + 1);
+        resetModalState();
       }}>
         <ModalContent onClick={(e) => e.stopPropagation()}>
           <ModalHeader>
             <ModalTitle>Nova Transação</ModalTitle>
             <CloseButton onClick={() => {
               setShowModal(false);
-              setUploadedFile(null);
-              setActiveTab('manual');
-              setRequiresPassword(false);
-              setPassword('');
-              // Resetar mês de referência para o mês atual
-              setReferenceMonth(new Date().getMonth() + 1);
+              resetModalState();
             }}>×</CloseButton>
           </ModalHeader>
           <Tabs>
@@ -1365,11 +1786,7 @@ export const TransactionsPage: React.FC = () => {
             <ButtonGroup>
               <CancelButton type="button" onClick={() => {
                 setShowModal(false);
-                setUploadedFile(null);
-                setActiveTab('manual');
-                // Resetar mês de referência para o mês atual
-                const now = new Date();
-                setReferenceMonth(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`);
+                resetModalState();
               }}>
                 Cancelar
               </CancelButton>
@@ -1424,30 +1841,49 @@ export const TransactionsPage: React.FC = () => {
               </FormGroup>
               {/* Campo para mês de referência - para planilhas */}
               {uploadedFile && (
-                <FormGroup>
-                  <Label>Mês de Referência *</Label>
-                  <Select
-                    value={referenceMonth}
-                    onChange={(e) => setReferenceMonth(parseInt(e.target.value, 10))}
-                    required
-                  >
-                    <option value={1}>Janeiro</option>
-                    <option value={2}>Fevereiro</option>
-                    <option value={3}>Março</option>
-                    <option value={4}>Abril</option>
-                    <option value={5}>Maio</option>
-                    <option value={6}>Junho</option>
-                    <option value={7}>Julho</option>
-                    <option value={8}>Agosto</option>
-                    <option value={9}>Setembro</option>
-                    <option value={10}>Outubro</option>
-                    <option value={11}>Novembro</option>
-                    <option value={12}>Dezembro</option>
-                  </Select>
-                  <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '0.25rem' }}>
-                    Selecione o mês ao qual esta planilha se refere ({new Date().getFullYear()}). Todas as transações serão criadas com essa data.
-                  </div>
-                </FormGroup>
+                <>
+                  <FormGroup>
+                    <Label>Cartão (Opcional)</Label>
+                    <Select
+                      value={selectedCardId}
+                      onChange={(e) => setSelectedCardId(e.target.value)}
+                    >
+                      <option value="">Nenhum cartão</option>
+                      {cards.map(card => (
+                        <option key={card.id} value={card.id}>
+                          {card.name}
+                        </option>
+                      ))}
+                    </Select>
+                    <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                      Selecione o cartão ao qual esta planilha pertence. Isso ajudará a filtrar e organizar as transações.
+                    </div>
+                  </FormGroup>
+                  <FormGroup>
+                    <Label>Mês de Referência *</Label>
+                    <Select
+                      value={referenceMonth}
+                      onChange={(e) => setReferenceMonth(parseInt(e.target.value, 10))}
+                      required
+                    >
+                      <option value={1}>Janeiro</option>
+                      <option value={2}>Fevereiro</option>
+                      <option value={3}>Março</option>
+                      <option value={4}>Abril</option>
+                      <option value={5}>Maio</option>
+                      <option value={6}>Junho</option>
+                      <option value={7}>Julho</option>
+                      <option value={8}>Agosto</option>
+                      <option value={9}>Setembro</option>
+                      <option value={10}>Outubro</option>
+                      <option value={11}>Novembro</option>
+                      <option value={12}>Dezembro</option>
+                    </Select>
+                    <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                      Selecione o mês ao qual esta planilha se refere ({new Date().getFullYear()}). Todas as transações serão criadas com essa data.
+                    </div>
+                  </FormGroup>
+                </>
               )}
               {requiresPassword && activeTab === 'spreadsheet' && (
                 <PasswordContainer>
@@ -1487,12 +1923,7 @@ export const TransactionsPage: React.FC = () => {
                 <ButtonGroup style={{ marginTop: '1.5rem' }}>
                   <CancelButton type="button" onClick={() => {
                     setShowModal(false);
-                    setUploadedFile(null);
-                    setActiveTab('manual');
-                    setRequiresPassword(false);
-                    setPassword('');
-                    // Resetar mês de referência para o mês atual
-                    setReferenceMonth(new Date().getMonth() + 1);
+                    resetModalState();
                   }}>
                     Cancelar
                   </CancelButton>
@@ -1593,12 +2024,7 @@ export const TransactionsPage: React.FC = () => {
                 <ButtonGroup style={{ marginTop: '1.5rem' }}>
                   <CancelButton type="button" onClick={() => {
                     setShowModal(false);
-                    setUploadedFile(null);
-                    setActiveTab('manual');
-                    setRequiresPassword(false);
-                    setPassword('');
-                    // Resetar mês de referência para o mês atual
-                    setReferenceMonth(new Date().getMonth() + 1);
+                    resetModalState();
                   }}>
                     Cancelar
                   </CancelButton>
@@ -1693,11 +2119,20 @@ export const TransactionsPage: React.FC = () => {
             <FormGroup>
               <Label>Valor (R$)</Label>
               <Input
-                type="number"
-                step="0.01"
-                min="0.01"
-                value={formData.amount || ''}
-                onChange={(e) => setFormData({ ...formData, amount: parseFloat(e.target.value) || 0 })}
+                type="text"
+                inputMode="decimal"
+                value={formData.amount ? formData.amount.toString().replace('.', ',') : ''}
+                onChange={(e) => {
+                  // Permitir vírgula ou ponto como separador decimal
+                  const value = e.target.value.replace(',', '.');
+                  const numValue = parseFloat(value);
+                  if (!isNaN(numValue) && numValue >= 0) {
+                    setFormData({ ...formData, amount: numValue });
+                  } else if (value === '' || value === '-') {
+                    setFormData({ ...formData, amount: 0 });
+                  }
+                }}
+                placeholder="0,00"
                 required
               />
             </FormGroup>

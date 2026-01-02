@@ -103,7 +103,8 @@ export const uploadService = {
     file: File,
     onProgress: (event: UploadProgressEvent) => void,
     password?: string,
-    referenceMonth?: string // formato "YYYY-MM"
+    referenceMonth?: string, // formato "YYYY-MM"
+    cardId?: string // ID do cartão associado
   ): Promise<{ success: boolean; transactionsCreated: number; filename: string; originalname: string }> {
     const formData = new FormData();
     formData.append('file', file);
@@ -112,6 +113,9 @@ export const uploadService = {
     }
     if (referenceMonth) {
       formData.append('referenceMonth', referenceMonth);
+    }
+    if (cardId) {
+      formData.append('cardId', cardId);
     }
 
     const token = localStorage.getItem('token');

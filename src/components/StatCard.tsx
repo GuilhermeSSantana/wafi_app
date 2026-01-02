@@ -13,15 +13,34 @@ interface StatCardProps {
 
 const Container = styled.div`
   background: ${({ theme }) => theme.colors.surface};
-  border-radius: ${({ theme }) => theme.borderRadius.lg};
-  padding: ${({ theme }) => theme.spacing.xl};
-  box-shadow: ${({ theme }) => theme.shadows.sm};
-  border: 1px solid ${({ theme }) => theme.colors.border};
-  transition: transform 0.2s, box-shadow 0.2s;
+  border-radius: ${({ theme }) => theme.borderRadius.xl};
+  padding: ${({ theme }) => theme.spacing.xxl};
+  box-shadow: ${({ theme }) => theme.shadows.md};
+  border: 1px solid ${({ theme }) => theme.colors.borderLight};
+  transition: all ${({ theme }) => theme.transitions.normal};
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: ${({ theme }) => theme.colors.primaryGradient};
+    opacity: 0;
+    transition: opacity ${({ theme }) => theme.transitions.normal};
+  }
 
   &:hover {
     transform: translateY(-4px);
-    box-shadow: ${({ theme }) => theme.shadows.md};
+    box-shadow: ${({ theme }) => theme.shadows.lg};
+    border-color: ${({ theme }) => theme.colors.primaryLight};
+
+    &::before {
+      opacity: 1;
+    }
   }
 `;
 
@@ -29,32 +48,38 @@ const Header = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: ${({ theme }) => theme.spacing.md};
+  margin-bottom: ${({ theme }) => theme.spacing.lg};
 `;
 
 const Title = styled.h3`
-  font-size: 0.875rem;
-  font-weight: 600;
+  font-size: ${({ theme }) => theme.typography.fontSize.sm};
+  font-weight: ${({ theme }) => theme.typography.fontWeight.semibold};
   color: ${({ theme }) => theme.colors.textSecondary};
   margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 `;
 
 const IconContainer = styled.div<{ $color?: string }>`
-  width: 40px;
-  height: 40px;
-  border-radius: ${({ theme }) => theme.borderRadius.md};
+  width: 48px;
+  height: 48px;
+  border-radius: ${({ theme }) => theme.borderRadius.lg};
   display: flex;
   align-items: center;
   justify-content: center;
-  background: ${({ $color, theme }) => $color ? `${$color}20` : theme.colors.primary + '20'};
+  background: ${({ $color, theme }) => $color ? `${$color}15` : theme.colors.primaryLight + '15'};
   color: ${({ $color, theme }) => $color || theme.colors.primary};
+  font-size: 1.5rem;
+  box-shadow: ${({ theme }) => theme.shadows.sm};
 `;
 
 const Value = styled.div<{ $color?: string }>`
-  font-size: 2rem;
-  font-weight: 700;
+  font-size: ${({ theme }) => theme.typography.fontSize['3xl']};
+  font-weight: ${({ theme }) => theme.typography.fontWeight.extrabold};
   color: ${({ $color, theme }) => $color || theme.colors.text};
   margin-bottom: ${({ theme }) => theme.spacing.xs};
+  letter-spacing: -0.02em;
+  line-height: ${({ theme }) => theme.typography.lineHeight.tight};
 `;
 
 const Trend = styled.div<{ $positive: boolean }>`
