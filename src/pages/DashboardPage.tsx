@@ -392,7 +392,7 @@ export const DashboardPage: React.FC = () => {
       const [transactionsResponse, cardsStatsResponse] = await Promise.all([
         transactionService.list({
           limit: 10000,
-          page: 1,
+          offset: 0,  // ✅ CORRIGIDO: era "page: 1", agora é "offset: 0"
         }),
         cardService.getStats().catch(() => []), // Se não houver cartões, retorna array vazio
       ]);
@@ -400,14 +400,11 @@ export const DashboardPage: React.FC = () => {
       setTransactions(transactionsResponse.data);
       setCardStats(cardsStatsResponse);
 
-
-
       const typeCounts = transactionsResponse.data.reduce((acc: any, t: any) => {
         const type = String(t.type).toUpperCase();
         acc[type] = (acc[type] || 0) + 1;
         return acc;
       }, {});
-
 
       // Garantir que amount seja sempre número e comparar tipo como string
       // Usar comparação mais flexível para aceitar tanto string quanto enum
@@ -437,8 +434,6 @@ export const DashboardPage: React.FC = () => {
           return sum + amount;
         }, 0);
 
-      
-
       setTotalIncome(income);
       setTotalExpense(expense);
     } catch (error) {
@@ -447,7 +442,6 @@ export const DashboardPage: React.FC = () => {
       setLoading(false);
     }
   };
-
   const balance = totalIncome - totalExpense;
 
   // Calcular valores do mês selecionado
