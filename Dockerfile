@@ -62,16 +62,17 @@ COPY --from=builder /app/dist ./dist
 # Expor porta
 EXPOSE 3000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:${PORT:-3000}/ || exit 1
-
 # Variável de ambiente para porta (padrão 3000)
 ENV PORT=3000
 
+# Health check - usar porta fixa 3000 para evitar problemas com variável
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/ || exit 1
+
 # Comando para iniciar a aplicação
-# Usar variável PORT se disponível, senão usar 3000
+# Usar exec para garantir que serve seja o processo principal (PID 1)
+# Isso evita que o container seja encerrado prematuramente
 CMD sh -c "echo '🚀 Iniciando servidor na porta ${PORT:-3000}' && \
            echo '📁 Servindo arquivos de: $(pwd)/dist' && \
            ls -lah dist/ | head -10 && \
-           serve -s dist -l ${PORT:-3000} --no-clipboard"
+           exec serve -s dist -l ${PORT:-3000} --no-clipboard"
