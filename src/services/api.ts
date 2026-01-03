@@ -1,16 +1,29 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
 import { ApiResponse } from '@types';
 
-// Normalizar URL da API - remover barra final e adicionar /api se necessário
-const normalizeApiUrl = (url: string): string => {
+// Normalizar URL da API - remover barra final e garantir /api no final
+const normalizeApiUrl = (url?: string): string => {
+  const fallbackDev = 'http://localhost:3000';
+
+  const raw =
+    (url && url.trim()) ||
+    (import.meta.env.DEV ? fallbackDev : '');
+
+  if (!raw) {
+    // Em produção, não deixa quebrar silencioso
+    throw new Error(
+      'VITE_API_URL não definida em produção. Configure no deploy (EasyPanel) e rebuilde o frontend.'
+    );
+  }
+
   // Remover barras finais
-  let normalized = url.replace(/\/+$/, '');
-  
-  // Se não termina com /api, adicionar
+  let normalized = raw.replace(/\/+$/, '');
+
+  // Garantir /api no final (sem duplicar)
   if (!normalized.endsWith('/api')) {
     normalized = `${normalized}/api`;
   }
-  
+
   return normalized;
 };
 
@@ -72,7 +85,6 @@ class ApiService {
     return response.data.data as T;
   }
 
-  // ✅ Novo método PATCH
   async patch<T>(url: string, data?: unknown): Promise<T> {
     const response = await this.client.patch<ApiResponse<T>>(url, data);
     if (!response.data.success) {
