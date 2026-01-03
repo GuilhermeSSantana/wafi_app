@@ -132,9 +132,11 @@ const StyledLink = styled(Link)`
   }
 `;
 
-export const LoginPage: React.FC = () => {
+export const RegisterPage: React.FC = () => {
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -142,14 +144,65 @@ export const LoginPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    // Validações client-side
+    if (password.length < 6) {
+      setError('A senha deve ter no mínimo 6 caracteres');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError('As senhas não coincidem');
+      return;
+    }
+
+    if (name.length < 2) {
+      setError('O nome deve ter no mínimo 2 caracteres');
+      return;
+    }
+
     setLoading(true);
 
     try {
-      const result = await authService.login({ email, password });
-      authService.setAuth(result.user, result.token);
-      navigate('/');
+      // Registrar usuário
+      await authService.register({
+        name,
+        email,
+        password,
+      });
+
+      // Fazer login automático após registro
+      try {
+        const loginResult = await authService.login({ email, password });
+        authService.setAuth(loginResult.user, loginResult.token);
+        navigate('/');
+      } catch (loginErr: any) {
+        // Se o login automático falhar, redirecionar para login
+        setError('Conta criada com sucesso! Por favor, faça login.');
+        setTimeout(() => {
+          navigate('/login');
+        }, 2000);
+      }
     } catch (err: any) {
-      setError(err.message || 'Erro ao fazer login');
+      // Tratar diferentes formatos de erro
+      let errorMessage = 'Erro ao criar conta';
+      
+      if (err.response?.data) {
+        errorMessage = err.response.data.message || err.response.data.error || errorMessage;
+        
+        if (err.response.data.errors) {
+          const validationErrors = err.response.data.errors;
+          if (Array.isArray(validationErrors)) {
+            errorMessage = validationErrors.map((e: any) => e.message || e).join(', ');
+          } else if (typeof validationErrors === 'object') {
+            errorMessage = Object.values(validationErrors).flat().join(', ');
+          }
+        }
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -160,9 +213,21 @@ export const LoginPage: React.FC = () => {
       <Card>
         <LogoContainer>
           <Logo>Wafi Sync</Logo>
-          <Subtitle>Gestão Financeira Inteligente</Subtitle>
+          <Subtitle>Crie sua conta e comece a gerenciar suas finanças</Subtitle>
         </LogoContainer>
         <Form onSubmit={handleSubmit}>
+          <FormGroup>
+            <Label>Nome completo</Label>
+            <Input
+              type="text"
+              placeholder="João Silva"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              disabled={loading}
+              minLength={2}
+            />
+          </FormGroup>
           <FormGroup>
             <Label>Email</Label>
             <Input
@@ -183,20 +248,34 @@ export const LoginPage: React.FC = () => {
               onChange={(e) => setPassword(e.target.value)}
               required
               disabled={loading}
+              minLength={6}
+            />
+          </FormGroup>
+          <FormGroup>
+            <Label>Confirmar senha</Label>
+            <Input
+              type="password"
+              placeholder="••••••••"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+              disabled={loading}
+              minLength={6}
             />
           </FormGroup>
           {error && <Error>{error}</Error>}
           <Button type="submit" disabled={loading}>
-            {loading ? 'Entrando...' : 'Entrar'}
+            {loading ? 'Criando conta...' : 'Criar conta'}
           </Button>
         </Form>
         <LinkContainer>
           <span style={{ color: '#6b7280', fontSize: '0.875rem' }}>
-            Não tem uma conta?{' '}
+            Já tem uma conta?{' '}
           </span>
-          <StyledLink to="/register">Criar conta</StyledLink>
+          <StyledLink to="/login">Fazer login</StyledLink>
         </LinkContainer>
       </Card>
     </Container>
   );
 };
+
