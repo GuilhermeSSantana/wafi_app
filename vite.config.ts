@@ -18,14 +18,8 @@ export default defineConfig({
   },
   server: {
     host: '0.0.0.0',
-    port: parseInt(process.env.PORT || '3000'),
+    port: 3001, // Frontend sempre na porta 3001 localmente
     strictPort: false,
-    proxy: {
-      '/api': {
-        target: process.env.VITE_API_URL || 'http://localhost:3000',
-        changeOrigin: true,
-      },
-    },
   },
 });
 
