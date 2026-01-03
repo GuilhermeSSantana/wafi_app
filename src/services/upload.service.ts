@@ -4,16 +4,16 @@ import { UploadResponse } from '@types';
 const normalizeApiUrl = (url: string): string => {
   // Remover barras finais
   let normalized = url.replace(/\/+$/, '');
-  
+
   // Se não termina com /api, adicionar
   if (!normalized.endsWith('/api')) {
     normalized = `${normalized}/api`;
   }
-  
+
   return normalized;
 };
 
-const API_URL = normalizeApiUrl(import.meta.env.VITE_API_URL || 'http://localhost:3000/api');
+const API_URL = normalizeApiUrl(import.meta.env.VITE_API_URL);
 
 export interface UploadProgressEvent {
   progress: number;
@@ -33,7 +33,7 @@ export const uploadService = {
     formData.append('file', file);
 
     const token = localStorage.getItem('token');
-    
+
     const response = await fetch(`${API_URL}/upload`, {
       method: 'POST',
       headers: {
@@ -64,14 +64,14 @@ export const uploadService = {
     formData.append('file', file);
 
     const token = localStorage.getItem('token');
-    
+
     const xhr = new XMLHttpRequest();
     let eventSource: EventSource | null = null;
 
     // Upload do arquivo
     xhr.open('POST', `${API_URL}/upload/stream`);
     xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-    
+
     xhr.onload = () => {
       if (xhr.status === 200) {
         // O upload foi bem-sucedido, mas o processamento continua via SSE
@@ -90,10 +90,10 @@ export const uploadService = {
     // Conectar ao SSE para receber progresso
     // Nota: Na prática, o SSE seria iniciado após o upload, mas para simplificar
     // vamos usar apenas o endpoint SSE que já recebe o arquivo
-    
+
     // Por enquanto, vamos usar uma abordagem diferente - fazer upload e depois conectar ao SSE
     // Ou melhor ainda, usar apenas fetch com streaming
-    
+
     return () => {
       xhr.abort();
     };
@@ -122,7 +122,7 @@ export const uploadService = {
     }
 
     const token = localStorage.getItem('token');
-    
+
     const response = await fetch(`${API_URL}/upload/stream`, {
       method: 'POST',
       headers: {
@@ -148,7 +148,7 @@ export const uploadService = {
 
     while (true) {
       const { done, value } = await reader.read();
-      
+
       if (done) break;
 
       buffer += decoder.decode(value, { stream: true });
@@ -159,13 +159,13 @@ export const uploadService = {
         if (line.startsWith('data: ')) {
           try {
             const data = JSON.parse(line.slice(6));
-           
-            
+
+
             // Atualizar finalResult ANTES de chamar onProgress
             if (data.success !== undefined || data.requiresPassword !== undefined || data.invalidPassword !== undefined) {
               finalResult = data;
             }
-            
+
             // Sempre chamar onProgress se houver progress ou message
             if (data.progress !== undefined || data.message !== undefined) {
               onProgress({

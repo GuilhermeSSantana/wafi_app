@@ -14,7 +14,7 @@ const normalizeApiUrl = (url: string): string => {
   return normalized;
 };
 
-const API_URL = normalizeApiUrl(import.meta.env.VITE_API_URL || 'http://localhost:3000/api');
+const API_URL = normalizeApiUrl(import.meta.env.VITE_API_URL);
 
 class ApiService {
   private client: AxiosInstance;

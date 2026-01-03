@@ -17,7 +17,7 @@ const Card = styled.div`
   border-radius: ${({ theme }) => theme.borderRadius.xl};
   padding: ${({ theme }) => theme.spacing.xxl};
   width: 100%;
-  max-width: 420px;
+  max-width: 480px;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
 `;
 
@@ -112,6 +112,16 @@ const Error = styled.div`
   text-align: center;
 `;
 
+const Success = styled.div`
+  padding: ${({ theme }) => theme.spacing.md};
+  background-color: #d1fae5;
+  border: 1px solid #a7f3d0;
+  border-radius: ${({ theme }) => theme.borderRadius.md};
+  color: #065f46;
+  font-size: 0.875rem;
+  text-align: center;
+`;
+
 const LinkContainer = styled.div`
   text-align: center;
   margin-top: ${({ theme }) => theme.spacing.lg};
@@ -132,24 +142,89 @@ const StyledLink = styled(Link)`
   }
 `;
 
-export const LoginPage: React.FC = () => {
+const PasswordHint = styled.span`
+  font-size: 0.75rem;
+  color: ${({ theme }) => theme.colors.textSecondary};
+  margin-top: -${({ theme }) => theme.spacing.xs};
+`;
+
+export const RegisterPage: React.FC = () => {
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setSuccess('');
+
+    // Validações client-side
+    if (password.length < 6) {
+      setError('A senha deve ter no mínimo 6 caracteres');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError('As senhas não coincidem');
+      return;
+    }
+
+    if (name.length < 2) {
+      setError('O nome deve ter no mínimo 2 caracteres');
+      return;
+    }
+
     setLoading(true);
 
     try {
-      const result = await authService.login({ email, password });
-      authService.setAuth(result.user, result.token);
-      navigate('/');
+      // Registrar usuário
+      await authService.register({
+        name,
+        email,
+        password,
+      });
+
+      setSuccess('Conta criada com sucesso! Fazendo login...');
+
+      // Fazer login automático após registro
+      try {
+        const loginResult = await authService.login({ email, password });
+        authService.setAuth(loginResult.user, loginResult.token);
+        navigate('/');
+      } catch (loginErr: any) {
+        // Se o login automático falhar, redirecionar para login
+        setError('Conta criada, mas não foi possível fazer login automaticamente. Por favor, faça login manualmente.');
+        setTimeout(() => {
+          navigate('/login');
+        }, 2000);
+      }
     } catch (err: any) {
-      setError(err.message || 'Erro ao fazer login');
+      // Tratar diferentes formatos de erro
+      let errorMessage = 'Erro ao criar conta';
+      
+      if (err.response?.data) {
+        // Erro do backend (ApiResponse)
+        errorMessage = err.response.data.message || err.response.data.error || errorMessage;
+        
+        // Erros de validação do Zod podem vir em formato diferente
+        if (err.response.data.errors) {
+          const validationErrors = err.response.data.errors;
+          if (Array.isArray(validationErrors)) {
+            errorMessage = validationErrors.map((e: any) => e.message || e).join(', ');
+          } else if (typeof validationErrors === 'object') {
+            errorMessage = Object.values(validationErrors).flat().join(', ');
+          }
+        }
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -160,9 +235,21 @@ export const LoginPage: React.FC = () => {
       <Card>
         <LogoContainer>
           <Logo>Wafi Sync</Logo>
-          <Subtitle>Gestão Financeira Inteligente</Subtitle>
+          <Subtitle>Crie sua conta e comece a gerenciar suas finanças</Subtitle>
         </LogoContainer>
         <Form onSubmit={handleSubmit}>
+          <FormGroup>
+            <Label>Nome completo</Label>
+            <Input
+              type="text"
+              placeholder="João Silva"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              disabled={loading}
+              minLength={2}
+            />
+          </FormGroup>
           <FormGroup>
             <Label>Email</Label>
             <Input
@@ -183,20 +270,36 @@ export const LoginPage: React.FC = () => {
               onChange={(e) => setPassword(e.target.value)}
               required
               disabled={loading}
+              minLength={6}
+            />
+            <PasswordHint>Mínimo de 6 caracteres</PasswordHint>
+          </FormGroup>
+          <FormGroup>
+            <Label>Confirmar senha</Label>
+            <Input
+              type="password"
+              placeholder="••••••••"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+              disabled={loading}
+              minLength={6}
             />
           </FormGroup>
           {error && <Error>{error}</Error>}
+          {success && <Success>{success}</Success>}
           <Button type="submit" disabled={loading}>
-            {loading ? 'Entrando...' : 'Entrar'}
+            {loading ? 'Criando conta...' : 'Criar conta'}
           </Button>
         </Form>
         <LinkContainer>
           <span style={{ color: '#6b7280', fontSize: '0.875rem' }}>
-            Não tem uma conta?{' '}
+            Já tem uma conta?{' '}
           </span>
-          <StyledLink to="/register">Criar conta</StyledLink>
+          <StyledLink to="/login">Fazer login</StyledLink>
         </LinkContainer>
       </Card>
     </Container>
   );
 };
+
