@@ -1,6 +1,19 @@
 import { UploadResponse } from '@types';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+// Normalizar URL da API - remover barra final e adicionar /api se necessário
+const normalizeApiUrl = (url: string): string => {
+  // Remover barras finais
+  let normalized = url.replace(/\/+$/, '');
+  
+  // Se não termina com /api, adicionar
+  if (!normalized.endsWith('/api')) {
+    normalized = `${normalized}/api`;
+  }
+  
+  return normalized;
+};
+
+const API_URL = normalizeApiUrl(import.meta.env.VITE_API_URL || 'http://localhost:3000/api');
 
 export interface UploadProgressEvent {
   progress: number;
