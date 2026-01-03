@@ -75,4 +75,4 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
 CMD sh -c "echo '🚀 Iniciando servidor na porta ${PORT:-3000}' && \
            echo '📁 Servindo arquivos de: $(pwd)/dist' && \
            ls -lah dist/ | head -10 && \
-           exec serve -s dist -l ${PORT:-3000} --no-clipboard"
+           exec serve -s dist -l 0.0.0.0:${PORT:-3000} --no-clipboard"
