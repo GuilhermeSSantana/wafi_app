@@ -2,6 +2,7 @@ export enum UserRole {
   USER = 'USER',
   COMPANY_ADMIN = 'COMPANY_ADMIN',
   EMPLOYEE = 'EMPLOYEE',
+  ADMIN = 'ADMIN',
 }
 
 export enum TransactionType {
