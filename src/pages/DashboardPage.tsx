@@ -6,30 +6,34 @@ import { authService } from '@services/auth.service';
 import { Transaction, TransactionType } from '@types';
 import { format, subDays, startOfMonth, endOfMonth, startOfYear, endOfYear } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { StatCard } from '@components/StatCard';
 import { Card } from '@components/Card';
-import { AreaChart, Area, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { AreaChart, Area, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
+import { useNavigate } from 'react-router-dom';
 
 const Container = styled.div`
   display: flex;
   flex-direction: column;
-  gap: ${({ theme }) => theme.spacing.xxl};
+  gap: ${({ theme }) => theme.spacing.xl};
+  padding: ${({ theme }) => theme.spacing.lg};
   max-width: 100%;
 `;
 
-const WelcomeSection = styled.div`
-  margin-bottom: ${({ theme }) => theme.spacing.xl};
+const Header = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${({ theme }) => theme.spacing.xs};
+  margin-bottom: ${({ theme }) => theme.spacing.lg};
 `;
 
-const WelcomeTitle = styled.h1`
+const Title = styled.h1`
   font-size: ${({ theme }) => theme.typography.fontSize['3xl']};
   font-weight: ${({ theme }) => theme.typography.fontWeight.bold};
   color: ${({ theme }) => theme.colors.text};
-  margin: 0 0 ${({ theme }) => theme.spacing.xs} 0;
+  margin: 0;
   letter-spacing: -0.02em;
 `;
 
-const WelcomeSubtitle = styled.p`
+const Subtitle = styled.p`
   font-size: ${({ theme }) => theme.typography.fontSize.base};
   color: ${({ theme }) => theme.colors.textSecondary};
   margin: 0;
@@ -37,33 +41,33 @@ const WelcomeSubtitle = styled.p`
 
 const StatsGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: ${({ theme }) => theme.spacing.lg};
   margin-bottom: ${({ theme }) => theme.spacing.xl};
 `;
 
-const SummaryCard = styled(Card)`
+const StatCard = styled(Card)`
   padding: ${({ theme }) => theme.spacing.xl};
-  display: flex;
-  flex-direction: column;
-  gap: ${({ theme }) => theme.spacing.md};
   position: relative;
   overflow: hidden;
   transition: all ${({ theme }) => theme.transitions.normal};
+  border: 1px solid ${({ theme }) => theme.colors.borderLight};
 
   &:hover {
-    transform: translateY(-4px);
+    transform: translateY(-2px);
     box-shadow: ${({ theme }) => theme.shadows.lg};
+    border-color: ${({ theme }) => theme.colors.border};
   }
 `;
 
-const SummaryCardHeader = styled.div`
+const StatCardHeader = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
+  margin-bottom: ${({ theme }) => theme.spacing.md};
 `;
 
-const SummaryCardTitle = styled.h3`
+const StatCardTitle = styled.h3`
   font-size: ${({ theme }) => theme.typography.fontSize.sm};
   font-weight: ${({ theme }) => theme.typography.fontWeight.medium};
   color: ${({ theme }) => theme.colors.textSecondary};
@@ -72,36 +76,37 @@ const SummaryCardTitle = styled.h3`
   letter-spacing: 0.05em;
 `;
 
-const SummaryCardIcon = styled.div<{ $color?: string }>`
-  width: 48px;
-  height: 48px;
+const StatCardIcon = styled.div<{ $color: string }>`
+  width: 40px;
+  height: 40px;
   border-radius: ${({ theme }) => theme.borderRadius.lg};
   display: flex;
   align-items: center;
   justify-content: center;
-  background: ${({ $color, theme }) => $color ? `${$color}15` : theme.colors.primaryLight + '15'};
-  color: ${({ $color, theme }) => $color || theme.colors.primary};
-  font-size: 1.5rem;
+  background: ${({ $color }) => `${$color}15`};
+  color: ${({ $color }) => $color};
+  font-size: 1.25rem;
 `;
 
-const SummaryCardValue = styled.div<{ $color?: string }>`
+const StatCardValue = styled.div<{ $color?: string }>`
   font-size: ${({ theme }) => theme.typography.fontSize['3xl']};
-  font-weight: ${({ theme }) => theme.typography.fontWeight.extrabold};
+  font-weight: ${({ theme }) => theme.typography.fontWeight.bold};
   color: ${({ $color, theme }) => $color || theme.colors.text};
   letter-spacing: -0.02em;
-  line-height: ${({ theme }) => theme.typography.lineHeight.tight};
+  line-height: 1.2;
+  margin-bottom: ${({ theme }) => theme.spacing.xs};
 `;
 
-const SummaryCardChange = styled.div<{ $positive?: boolean }>`
+const StatCardChange = styled.div<{ $positive?: boolean }>`
   font-size: ${({ theme }) => theme.typography.fontSize.xs};
-  color: ${({ $positive, theme }) => $positive ? theme.colors.successDark : theme.colors.dangerDark};
-  font-weight: ${({ theme }) => theme.typography.fontWeight.semibold};
+  color: ${({ $positive, theme }) => $positive ? theme.colors.success : theme.colors.danger};
+  font-weight: ${({ theme }) => theme.typography.fontWeight.medium};
   display: flex;
   align-items: center;
   gap: ${({ theme }) => theme.spacing.xs};
 `;
 
-const SummaryCardSubtext = styled.div`
+const StatCardSubtext = styled.div`
   font-size: ${({ theme }) => theme.typography.fontSize.xs};
   color: ${({ theme }) => theme.colors.textSecondary};
   margin-top: ${({ theme }) => theme.spacing.xs};
@@ -114,9 +119,66 @@ const Section = styled.div`
   margin-bottom: ${({ theme }) => theme.spacing.xl};
 `;
 
+const SectionHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: ${({ theme }) => theme.spacing.md};
+  flex-wrap: wrap;
+  gap: ${({ theme }) => theme.spacing.md};
+`;
+
 const SectionTitle = styled.h2`
-  font-size: ${({ theme }) => theme.typography.fontSize['2xl']};
+  font-size: ${({ theme }) => theme.typography.fontSize.xl};
   font-weight: ${({ theme }) => theme.typography.fontWeight.bold};
+  color: ${({ theme }) => theme.colors.text};
+  margin: 0;
+  letter-spacing: -0.01em;
+`;
+
+const MonthSelect = styled.select`
+  padding: ${({ theme }) => theme.spacing.sm} ${({ theme }) => theme.spacing.md};
+  border: 1px solid ${({ theme }) => theme.colors.border};
+  border-radius: ${({ theme }) => theme.borderRadius.md};
+  font-size: ${({ theme }) => theme.typography.fontSize.sm};
+  color: ${({ theme }) => theme.colors.text};
+  background: ${({ theme }) => theme.colors.surface};
+  cursor: pointer;
+  transition: all ${({ theme }) => theme.transitions.normal};
+  font-weight: ${({ theme }) => theme.typography.fontWeight.medium};
+
+  &:focus {
+    outline: none;
+    border-color: ${({ theme }) => theme.colors.primary};
+    box-shadow: 0 0 0 3px ${({ theme }) => theme.colors.primaryLight}20;
+  }
+
+  &:hover {
+    border-color: ${({ theme }) => theme.colors.primaryLight};
+  }
+`;
+
+const ChartsGrid = styled.div`
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: ${({ theme }) => theme.spacing.xl};
+  
+  @media (max-width: 1024px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const ChartCard = styled(Card)`
+  padding: ${({ theme }) => theme.spacing.xl};
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  border: 1px solid ${({ theme }) => theme.colors.borderLight};
+`;
+
+const ChartTitle = styled.h3`
+  font-size: ${({ theme }) => theme.typography.fontSize.lg};
+  font-weight: ${({ theme }) => theme.typography.fontWeight.semibold};
   color: ${({ theme }) => theme.colors.text};
   margin: 0 0 ${({ theme }) => theme.spacing.lg} 0;
   letter-spacing: -0.01em;
@@ -125,7 +187,7 @@ const SectionTitle = styled.h2`
 const TransactionsList = styled.div`
   display: flex;
   flex-direction: column;
-  gap: ${({ theme }) => theme.spacing.sm};
+  gap: ${({ theme }) => theme.spacing.xs};
 `;
 
 const TransactionItem = styled.div`
@@ -133,26 +195,34 @@ const TransactionItem = styled.div`
   align-items: center;
   gap: ${({ theme }) => theme.spacing.md};
   padding: ${({ theme }) => theme.spacing.md};
-  border-radius: ${({ theme }) => theme.borderRadius.lg};
+  border-radius: ${({ theme }) => theme.borderRadius.md};
   border: 1px solid ${({ theme }) => theme.colors.borderLight};
   background: ${({ theme }) => theme.colors.surface};
   transition: all ${({ theme }) => theme.transitions.normal};
 
   &:hover {
     border-color: ${({ theme }) => theme.colors.primaryLight};
-    box-shadow: ${({ theme }) => theme.shadows.md};
-    transform: translateY(-2px);
+    box-shadow: ${({ theme }) => theme.shadows.sm};
+    transform: translateX(4px);
   }
 `;
 
-const TransactionIcon = styled.div`
+const TransactionIcon = styled.div<{ $type: TransactionType }>`
   width: 40px;
   height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.5rem;
-  color: ${({ theme }) => theme.colors.textSecondary};
+  font-size: 1.25rem;
+  border-radius: ${({ theme }) => theme.borderRadius.md};
+  background: ${({ $type, theme }) => 
+    $type === TransactionType.INCOME 
+      ? `${theme.colors.success}15` 
+      : `${theme.colors.danger}15`};
+  color: ${({ $type, theme }) => 
+    $type === TransactionType.INCOME 
+      ? theme.colors.success 
+      : theme.colors.danger};
 `;
 
 const TransactionInfo = styled.div`
@@ -188,21 +258,14 @@ const TransactionCategory = styled.span`
 const TransactionAmount = styled.div<{ $type: TransactionType }>`
   font-size: ${({ theme }) => theme.typography.fontSize.base};
   font-weight: ${({ theme }) => theme.typography.fontWeight.bold};
-  color: ${({ $type, theme }) => $type === TransactionType.INCOME ? theme.colors.successDark : theme.colors.dangerDark};
+  color: ${({ $type, theme }) => $type === TransactionType.INCOME ? theme.colors.success : theme.colors.danger};
   white-space: nowrap;
-`;
-
-const RecentTransactionsHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: ${({ theme }) => theme.spacing.lg};
 `;
 
 const ViewAllButton = styled.button`
   padding: ${({ theme }) => theme.spacing.sm} ${({ theme }) => theme.spacing.md};
   background: transparent;
-  border: 1px solid ${({ theme }) => theme.colors.borderLight};
+  border: 1px solid ${({ theme }) => theme.colors.border};
   border-radius: ${({ theme }) => theme.borderRadius.md};
   color: ${({ theme }) => theme.colors.primary};
   font-size: ${({ theme }) => theme.typography.fontSize.sm};
@@ -213,19 +276,8 @@ const ViewAllButton = styled.button`
   &:hover {
     background: ${({ theme }) => theme.colors.primaryLight}10;
     border-color: ${({ theme }) => theme.colors.primary};
+    transform: translateY(-1px);
   }
-`;
-
-const CategoryBadge = styled.span`
-  display: inline-block;
-  padding: ${({ theme }) => theme.spacing.xs} ${({ theme }) => theme.spacing.sm};
-  background: ${({ theme }) => theme.colors.primaryLight}15;
-  color: ${({ theme }) => theme.colors.primary};
-  border-radius: ${({ theme }) => theme.borderRadius.md};
-  font-size: ${({ theme }) => theme.typography.fontSize.xs};
-  font-weight: ${({ theme }) => theme.typography.fontWeight.semibold};
-  margin-top: ${({ theme }) => theme.spacing.xs};
-  border: 1px solid ${({ theme }) => theme.colors.primaryLight}30;
 `;
 
 const EmptyState = styled.div`
@@ -240,109 +292,7 @@ const LoadingState = styled.div`
   color: ${({ theme }) => theme.colors.textSecondary};
 `;
 
-const ChartsGrid = styled.div`
-  display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: ${({ theme }) => theme.spacing.xl};
-  
-  @media (max-width: ${({ theme }) => theme.breakpoints.lg}) {
-    grid-template-columns: 1fr;
-  }
-`;
-
-const ChartCard = styled(Card)`
-  padding: ${({ theme }) => theme.spacing.xl};
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-`;
-
-const ChartTitle = styled.h3`
-  font-size: ${({ theme }) => theme.typography.fontSize.lg};
-  font-weight: ${({ theme }) => theme.typography.fontWeight.semibold};
-  color: ${({ theme }) => theme.colors.text};
-  margin-bottom: ${({ theme }) => theme.spacing.lg};
-  letter-spacing: -0.01em;
-`;
-
-const SectionHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: ${({ theme }) => theme.spacing.lg};
-  flex-wrap: wrap;
-  gap: ${({ theme }) => theme.spacing.md};
-`;
-
-const MonthSelect = styled.select`
-  padding: ${({ theme }) => theme.spacing.md} ${({ theme }) => theme.spacing.lg};
-  border: 1px solid ${({ theme }) => theme.colors.borderLight};
-  border-radius: ${({ theme }) => theme.borderRadius.md};
-  font-size: ${({ theme }) => theme.typography.fontSize.sm};
-  color: ${({ theme }) => theme.colors.text};
-  background: ${({ theme }) => theme.colors.surface};
-  cursor: pointer;
-  transition: all ${({ theme }) => theme.transitions.normal};
-  font-weight: ${({ theme }) => theme.typography.fontWeight.medium};
-
-  &:focus {
-    outline: none;
-    border-color: ${({ theme }) => theme.colors.primary};
-    box-shadow: 0 0 0 3px ${({ theme }) => theme.colors.primaryLight}20;
-  }
-
-  &:hover {
-    border-color: ${({ theme }) => theme.colors.primaryLight};
-  }
-`;
-
-const ToggleButton = styled.button<{ $isOpen: boolean }>`
-  display: flex;
-  align-items: center;
-  gap: ${({ theme }) => theme.spacing.sm};
-  padding: ${({ theme }) => theme.spacing.md} ${({ theme }) => theme.spacing.lg};
-  background: ${({ theme }) => theme.colors.primaryLight}15;
-  border: 1px solid ${({ theme }) => theme.colors.primaryLight}30;
-  border-radius: ${({ theme }) => theme.borderRadius.md};
-  color: ${({ theme }) => theme.colors.primary};
-  font-size: ${({ theme }) => theme.typography.fontSize.sm};
-  font-weight: ${({ theme }) => theme.typography.fontWeight.semibold};
-  cursor: pointer;
-  transition: all ${({ theme }) => theme.transitions.normal};
-
-  &:hover {
-    background: ${({ theme }) => theme.colors.primaryLight}25;
-    border-color: ${({ theme }) => theme.colors.primaryLight};
-    transform: translateY(-1px);
-  }
-
-  &::before {
-    content: '${({ $isOpen }) => ($isOpen ? '▼' : '▶')}';
-    font-size: ${({ theme }) => theme.typography.fontSize.xs};
-    transition: transform ${({ theme }) => theme.transitions.normal};
-  }
-`;
-
-const CollapsibleSection = styled.div<{ $isOpen: boolean }>`
-  display: ${({ $isOpen }) => ($isOpen ? 'flex' : 'none')};
-  flex-direction: column;
-  gap: ${({ theme }) => theme.spacing.lg};
-  margin-bottom: ${({ theme }) => theme.spacing.xl};
-  animation: ${({ $isOpen }) => ($isOpen ? 'fadeIn 0.3s ease-in' : 'none')};
-
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-      transform: translateY(-10px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-`;
-
-const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
+const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
 
 const formatCurrency = (value: number): string => {
   return new Intl.NumberFormat('pt-BR', {
@@ -372,12 +322,12 @@ const formatCategory = (category: string): string => {
 };
 
 export const DashboardPage: React.FC = () => {
+  const navigate = useNavigate();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [totalIncome, setTotalIncome] = useState(0);
   const [totalExpense, setTotalExpense] = useState(0);
   const [loading, setLoading] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState<Date>(new Date());
-  const [showAnnual, setShowAnnual] = useState(false);
   const [cardStats, setCardStats] = useState<CardStats[]>([]);
   const user = authService.getUser();
 
@@ -388,34 +338,21 @@ export const DashboardPage: React.FC = () => {
   const loadDashboard = async () => {
     try {
       setLoading(true);
-      // Buscar todas as transações e estatísticas de cartões
       const [transactionsResponse, cardsStatsResponse] = await Promise.all([
         transactionService.list({
           limit: 10000,
-          offset: 0,  // ✅ CORRIGIDO: era "page: 1", agora é "offset: 0"
+          page: 1,
         }),
-        cardService.getStats().catch(() => []), // Se não houver cartões, retorna array vazio
+        cardService.getStats().catch(() => []),
       ]);
 
       setTransactions(transactionsResponse.data);
       setCardStats(cardsStatsResponse);
 
-      const typeCounts = transactionsResponse.data.reduce((acc: any, t: any) => {
-        const type = String(t.type).toUpperCase();
-        acc[type] = (acc[type] || 0) + 1;
-        return acc;
-      }, {});
-
-      // Garantir que amount seja sempre número e comparar tipo como string
-      // Usar comparação mais flexível para aceitar tanto string quanto enum
       const income = transactionsResponse.data
         .filter((t: any) => {
           const type = String(t.type || '').toUpperCase().trim();
-          const isIncome = type === 'INCOME' ||
-            type === TransactionType.INCOME ||
-            t.type === TransactionType.INCOME;
-
-          return isIncome;
+          return type === 'INCOME' || type === TransactionType.INCOME || t.type === TransactionType.INCOME;
         })
         .reduce((sum: number, t: any) => {
           const amount = typeof t.amount === 'number' ? t.amount : Number(t.amount) || 0;
@@ -425,9 +362,7 @@ export const DashboardPage: React.FC = () => {
       const expense = transactionsResponse.data
         .filter((t: any) => {
           const type = String(t.type || '').toUpperCase().trim();
-          return type === 'EXPENSE' ||
-            type === TransactionType.EXPENSE ||
-            t.type === TransactionType.EXPENSE;
+          return type === 'EXPENSE' || type === TransactionType.EXPENSE || t.type === TransactionType.EXPENSE;
         })
         .reduce((sum: number, t: any) => {
           const amount = typeof t.amount === 'number' ? t.amount : Number(t.amount) || 0;
@@ -442,6 +377,7 @@ export const DashboardPage: React.FC = () => {
       setLoading(false);
     }
   };
+
   const balance = totalIncome - totalExpense;
 
   // Calcular valores do mês selecionado
@@ -513,9 +449,9 @@ export const DashboardPage: React.FC = () => {
     ? ((selectedMonthBalance - previousMonthBalance) / Math.abs(previousMonthBalance)) * 100
     : 0;
 
-  // Total de cartões (soma de todos os gastos)
+  // Total de cartões
   const totalCardExpenses = cardStats.reduce((sum, card) => sum + card.totalExpenses, 0);
-  const totalCardLimit = 5000; // Valor padrão, pode ser ajustado
+  const totalCardLimit = cardStats.reduce((sum, card) => sum + (card.balance + card.totalExpenses), 0) || 5000;
 
   // Obter lista de meses que têm transações
   const monthsWithTransactionsSet = new Set(
@@ -524,8 +460,6 @@ export const DashboardPage: React.FC = () => {
       return format(tDate, 'yyyy-MM');
     })
   );
-
-  // Sempre incluir o mês atual, mesmo que não tenha transações
   const currentMonthStr = format(new Date(), 'yyyy-MM');
   monthsWithTransactionsSet.add(currentMonthStr);
 
@@ -534,88 +468,7 @@ export const DashboardPage: React.FC = () => {
       const [year, month] = monthStr.split('-');
       return new Date(parseInt(year), parseInt(month) - 1, 1);
     })
-    .sort((a, b) => b.getTime() - a.getTime()); // Ordenar do mais recente para o mais antigo
-
-  // Calcular valores do ano atual
-  const currentYearStart = startOfYear(new Date());
-  const currentYearEnd = endOfYear(new Date());
-  const currentYearTransactions = transactions.filter((t) => {
-    const tDate = new Date(t.date);
-    return tDate >= currentYearStart && tDate <= currentYearEnd;
-  });
-
-  const currentYearIncome = currentYearTransactions
-    .filter((t: any) => {
-      const type = String(t.type || '').toUpperCase().trim();
-      return type === 'INCOME' || type === TransactionType.INCOME || t.type === TransactionType.INCOME;
-    })
-    .reduce((sum: number, t: any) => {
-      const amount = typeof t.amount === 'number' ? t.amount : Number(t.amount) || 0;
-      return sum + amount;
-    }, 0);
-
-  const currentYearExpense = currentYearTransactions
-    .filter((t: any) => {
-      const type = String(t.type || '').toUpperCase().trim();
-      return type === 'EXPENSE' || type === TransactionType.EXPENSE || t.type === TransactionType.EXPENSE;
-    })
-    .reduce((sum: number, t: any) => {
-      const amount = typeof t.amount === 'number' ? t.amount : Number(t.amount) || 0;
-      return sum + amount;
-    }, 0);
-
-  const currentYearBalance = currentYearIncome - currentYearExpense;
-
-  // Dados para gráfico de linha (últimos 7 dias)
-  const last7Days = Array.from({ length: 7 }, (_, i) => {
-    const date = subDays(new Date(), 6 - i);
-    const dayTransactions = transactions.filter(
-      (t) => format(new Date(t.date), 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd')
-    );
-    const income = dayTransactions
-      .filter((t) => {
-        const type = String(t.type).toUpperCase();
-        return type === 'INCOME' || type === TransactionType.INCOME;
-      })
-      .reduce((sum, t) => {
-        const amount = typeof t.amount === 'number' ? t.amount : Number(t.amount) || 0;
-        return sum + amount;
-      }, 0);
-    const expense = dayTransactions
-      .filter((t) => {
-        const type = String(t.type).toUpperCase();
-        return type === 'EXPENSE' || type === TransactionType.EXPENSE;
-      })
-      .reduce((sum, t) => {
-        const amount = typeof t.amount === 'number' ? t.amount : Number(t.amount) || 0;
-        return sum + amount;
-      }, 0);
-    return {
-      date: format(date, 'dd/MM'),
-      receitas: income,
-      despesas: expense,
-    };
-  });
-
-  // Dados para gráfico de pizza (categorias) - apenas despesas
-  const categoryData = transactions
-    .filter((t) => {
-      const type = String(t.type).toUpperCase();
-      return type === 'EXPENSE' || type === TransactionType.EXPENSE;
-    })
-    .reduce((acc, t) => {
-      const category = formatCategory(t.category);
-      if (!acc[category]) {
-        acc[category] = { name: category, value: 0 };
-      }
-      const amount = typeof t.amount === 'number' ? t.amount : Number(t.amount) || 0;
-      acc[category].value += amount;
-      return acc;
-    }, {} as Record<string, { name: string; value: number }>);
-
-  const pieData = Object.values(categoryData)
-    .sort((a, b) => b.value - a.value)
-    .slice(0, 6);
+    .sort((a, b) => b.getTime() - a.getTime());
 
   // Dados para gráfico de área (fluxo financeiro - últimos 6 meses)
   const financialFlowData = Array.from({ length: 6 }, (_, i) => {
@@ -649,88 +502,57 @@ export const DashboardPage: React.FC = () => {
       }, 0);
 
     return {
-      month: format(monthDate, 'MMM'),
-      valor: income - expense, // Saldo do mês
+      month: format(monthDate, 'MMM', { locale: ptBR }),
+      receitas: income,
+      despesas: expense,
+      saldo: income - expense,
     };
   });
 
-  // Transações recentes (últimas 4)
+  // Dados para gráfico de pizza (categorias) - apenas despesas do mês
+  const categoryData = selectedMonthTransactions
+    .filter((t) => {
+      const type = String(t.type).toUpperCase();
+      return type === 'EXPENSE' || type === TransactionType.EXPENSE;
+    })
+    .reduce((acc, t) => {
+      const category = formatCategory(t.category);
+      if (!acc[category]) {
+        acc[category] = { name: category, value: 0 };
+      }
+      const amount = typeof t.amount === 'number' ? t.amount : Number(t.amount) || 0;
+      acc[category].value += amount;
+      return acc;
+    }, {} as Record<string, { name: string; value: number }>);
+
+  const pieData = Object.values(categoryData)
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 8);
+
+  // Transações recentes (últimas 6)
   const recentTransactions = transactions
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-    .slice(0, 4);
+    .slice(0, 6);
 
   if (loading) {
     return (
       <Container>
-        <LoadingState>Carregando...</LoadingState>
+        <LoadingState>Carregando dados...</LoadingState>
       </Container>
     );
   }
 
   return (
     <Container>
-      <WelcomeSection>
-        <WelcomeTitle>Olá, {user?.name?.split(' ')[0] || 'Usuário'}!</WelcomeTitle>
-        <WelcomeSubtitle>Aqui está o resumo das suas finanças</WelcomeSubtitle>
-      </WelcomeSection>
+      <Header>
+        <Title>Dashboard Financeiro</Title>
+        <Subtitle>Visão geral das suas finanças em {format(selectedMonth, "MMMM 'de' yyyy", { locale: ptBR })}</Subtitle>
+      </Header>
 
-      {/* Cards de Resumo */}
-      <StatsGrid>
-        <SummaryCard>
-          <SummaryCardHeader>
-            <SummaryCardTitle>Saldo Total</SummaryCardTitle>
-            <SummaryCardIcon $color="#3b82f6">📄</SummaryCardIcon>
-          </SummaryCardHeader>
-          <SummaryCardValue $color="#3b82f6">{formatCurrency(selectedMonthBalance)}</SummaryCardValue>
-          {balanceChange !== 0 && (
-            <SummaryCardChange $positive={balanceChange >= 0}>
-              {balanceChange >= 0 ? '↑' : '↓'} {Math.abs(balanceChange).toFixed(1)}%
-            </SummaryCardChange>
-          )}
-        </SummaryCard>
-
-        <SummaryCard>
-          <SummaryCardHeader>
-            <SummaryCardTitle>Receitas</SummaryCardTitle>
-            <SummaryCardIcon $color="#22c55e">📈</SummaryCardIcon>
-          </SummaryCardHeader>
-          <SummaryCardValue $color="#22c55e">{formatCurrency(selectedMonthIncome)}</SummaryCardValue>
-          {incomeChange !== 0 && (
-            <SummaryCardChange $positive={incomeChange >= 0}>
-              {incomeChange >= 0 ? '↑' : '↓'} {Math.abs(incomeChange).toFixed(1)}%
-            </SummaryCardChange>
-          )}
-        </SummaryCard>
-
-        <SummaryCard>
-          <SummaryCardHeader>
-            <SummaryCardTitle>Despesas</SummaryCardTitle>
-            <SummaryCardIcon $color="#ef4444">📉</SummaryCardIcon>
-          </SummaryCardHeader>
-          <SummaryCardValue $color="#ef4444">{formatCurrency(selectedMonthExpense)}</SummaryCardValue>
-          {expenseChange !== 0 && (
-            <SummaryCardChange $positive={expenseChange <= 0}>
-              {expenseChange <= 0 ? '↓' : '↑'} {Math.abs(expenseChange).toFixed(1)}%
-            </SummaryCardChange>
-          )}
-        </SummaryCard>
-
-        <SummaryCard>
-          <SummaryCardHeader>
-            <SummaryCardTitle>Cartão</SummaryCardTitle>
-            <SummaryCardIcon $color="#8b5cf6">💳</SummaryCardIcon>
-          </SummaryCardHeader>
-          <SummaryCardValue $color="#8b5cf6">{formatCurrency(totalCardExpenses)}</SummaryCardValue>
-          <SummaryCardSubtext>Limite: {formatCurrency(totalCardLimit)}</SummaryCardSubtext>
-        </SummaryCard>
-      </StatsGrid>
-
-      {/* Seção de Filtro de Mês (Opcional) */}
+      {/* Filtro de Mês */}
       <Section>
         <SectionHeader>
-          <SectionTitle>
-            {format(selectedMonth, "MMMM 'de' yyyy", { locale: ptBR })}
-          </SectionTitle>
+          <SectionTitle>Período</SectionTitle>
           <MonthSelect
             value={format(selectedMonth, 'yyyy-MM')}
             onChange={(e) => {
@@ -747,49 +569,73 @@ export const DashboardPage: React.FC = () => {
         </SectionHeader>
       </Section>
 
-      <Section>
-        <SectionHeader>
-          <SectionTitle>Ano Atual ({format(new Date(), 'yyyy')})</SectionTitle>
-          <ToggleButton $isOpen={showAnnual} onClick={() => setShowAnnual(!showAnnual)}>
-            {showAnnual ? 'Ocultar' : 'Mostrar'} Anual
-          </ToggleButton>
-        </SectionHeader>
-        <CollapsibleSection $isOpen={showAnnual}>
-          <StatsGrid>
-            <StatCard
-              title="Total de Receitas"
-              value={formatCurrency(currentYearIncome)}
-              color="success"
-              icon={<span>💰</span>}
-            />
-            <StatCard
-              title="Total de Despesas"
-              value={formatCurrency(currentYearExpense)}
-              color="danger"
-              icon={<span>💸</span>}
-            />
-            <StatCard
-              title="Saldo"
-              value={formatCurrency(currentYearBalance)}
-              color={currentYearBalance >= 0 ? 'success' : 'danger'}
-              icon={<span>💵</span>}
-            />
-          </StatsGrid>
-        </CollapsibleSection>
-      </Section>
+      {/* Cards de Resumo */}
+      <StatsGrid>
+        <StatCard>
+          <StatCardHeader>
+            <StatCardTitle>Saldo do Mês</StatCardTitle>
+            <StatCardIcon $color="#3b82f6">💰</StatCardIcon>
+          </StatCardHeader>
+          <StatCardValue $color="#3b82f6">{formatCurrency(selectedMonthBalance)}</StatCardValue>
+          {balanceChange !== 0 && (
+            <StatCardChange $positive={balanceChange >= 0}>
+              {balanceChange >= 0 ? '↑' : '↓'} {Math.abs(balanceChange).toFixed(1)}% vs mês anterior
+            </StatCardChange>
+          )}
+        </StatCard>
+
+        <StatCard>
+          <StatCardHeader>
+            <StatCardTitle>Receitas</StatCardTitle>
+            <StatCardIcon $color="#10b981">📈</StatCardIcon>
+          </StatCardHeader>
+          <StatCardValue $color="#10b981">{formatCurrency(selectedMonthIncome)}</StatCardValue>
+          {incomeChange !== 0 && (
+            <StatCardChange $positive={incomeChange >= 0}>
+              {incomeChange >= 0 ? '↑' : '↓'} {Math.abs(incomeChange).toFixed(1)}% vs mês anterior
+            </StatCardChange>
+          )}
+        </StatCard>
+
+        <StatCard>
+          <StatCardHeader>
+            <StatCardTitle>Despesas</StatCardTitle>
+            <StatCardIcon $color="#ef4444">📉</StatCardIcon>
+          </StatCardHeader>
+          <StatCardValue $color="#ef4444">{formatCurrency(selectedMonthExpense)}</StatCardValue>
+          {expenseChange !== 0 && (
+            <StatCardChange $positive={expenseChange <= 0}>
+              {expenseChange <= 0 ? '↓' : '↑'} {Math.abs(expenseChange).toFixed(1)}% vs mês anterior
+            </StatCardChange>
+          )}
+        </StatCard>
+
+        <StatCard>
+          <StatCardHeader>
+            <StatCardTitle>Cartões</StatCardTitle>
+            <StatCardIcon $color="#8b5cf6">💳</StatCardIcon>
+          </StatCardHeader>
+          <StatCardValue $color="#8b5cf6">{formatCurrency(totalCardExpenses)}</StatCardValue>
+          <StatCardSubtext>Total utilizado</StatCardSubtext>
+        </StatCard>
+      </StatsGrid>
 
       {/* Gráficos */}
       <Section>
-        <SectionTitle>Gráficos e Análises</SectionTitle>
+        <SectionTitle>Análises e Gráficos</SectionTitle>
         <ChartsGrid>
           <ChartCard>
-            <ChartTitle>Fluxo Financeiro</ChartTitle>
-            <ResponsiveContainer width="100%" height={300}>
-              <AreaChart data={financialFlowData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+            <ChartTitle>Fluxo Financeiro (Últimos 6 Meses)</ChartTitle>
+            <ResponsiveContainer width="100%" height={320}>
+              <AreaChart data={financialFlowData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
                 <defs>
-                  <linearGradient id="colorValor" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                  <linearGradient id="colorReceitas" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="colorDespesas" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
@@ -816,12 +662,22 @@ export const DashboardPage: React.FC = () => {
                     padding: '8px 12px',
                   }}
                 />
+                <Legend />
                 <Area
                   type="monotone"
-                  dataKey="valor"
-                  stroke="#3b82f6"
+                  dataKey="receitas"
+                  stroke="#10b981"
                   fillOpacity={1}
-                  fill="url(#colorValor)"
+                  fill="url(#colorReceitas)"
+                  name="Receitas"
+                />
+                <Area
+                  type="monotone"
+                  dataKey="despesas"
+                  stroke="#ef4444"
+                  fillOpacity={1}
+                  fill="url(#colorDespesas)"
+                  name="Despesas"
                 />
               </AreaChart>
             </ResponsiveContainer>
@@ -830,7 +686,7 @@ export const DashboardPage: React.FC = () => {
           <ChartCard>
             <ChartTitle>Despesas por Categoria</ChartTitle>
             {pieData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
+              <ResponsiveContainer width="100%" height={320}>
                 <PieChart>
                   <Pie
                     data={pieData}
@@ -875,8 +731,8 @@ export const DashboardPage: React.FC = () => {
                 </PieChart>
               </ResponsiveContainer>
             ) : (
-              <EmptyState style={{ height: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                Nenhuma despesa encontrada
+              <EmptyState style={{ height: '320px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                Nenhuma despesa encontrada neste período
               </EmptyState>
             )}
           </ChartCard>
@@ -885,13 +741,13 @@ export const DashboardPage: React.FC = () => {
 
       {/* Transações Recentes */}
       <Section>
-        <RecentTransactionsHeader>
+        <SectionHeader>
           <SectionTitle>Transações Recentes</SectionTitle>
-          <ViewAllButton onClick={() => window.location.href = '/transactions'}>
-            Ver todas
+          <ViewAllButton onClick={() => navigate('/transactions')}>
+            Ver todas →
           </ViewAllButton>
-        </RecentTransactionsHeader>
-        <Card>
+        </SectionHeader>
+        <Card style={{ border: '1px solid', borderColor: '#e5e7eb' }}>
           {recentTransactions.length === 0 ? (
             <EmptyState>
               Nenhuma transação encontrada. Comece adicionando uma nova transação.
@@ -914,7 +770,9 @@ export const DashboardPage: React.FC = () => {
 
                 return (
                   <TransactionItem key={transaction.id}>
-                    <TransactionIcon>〰️</TransactionIcon>
+                    <TransactionIcon $type={transaction.type}>
+                      {transaction.type === TransactionType.INCOME ? '↑' : '↓'}
+                    </TransactionIcon>
                     <TransactionInfo>
                       <TransactionDescription>
                         {transaction.description || 'Sem descrição'}

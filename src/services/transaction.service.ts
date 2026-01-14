@@ -30,9 +30,25 @@ interface GenerateFutureInstallmentsResponse {
 }
 
 class TransactionService {
-  async list(filters?: { limit?: number; offset?: number }): Promise<ListResponse> {
+  async list(filters?: { limit?: number; page?: number; offset?: number }): Promise<ListResponse> {
     try {
-      return await api.get<ListResponse>('/transactions');
+      // Construir query string com os parâmetros
+      const params = new URLSearchParams();
+      if (filters?.limit) {
+        params.append('limit', filters.limit.toString());
+      }
+      // Se passar offset, converter para page (offset = (page - 1) * limit)
+      if (filters?.offset !== undefined && filters?.limit) {
+        const page = Math.floor(filters.offset / filters.limit) + 1;
+        params.append('page', page.toString());
+      } else if (filters?.page) {
+        params.append('page', filters.page.toString());
+      }
+      
+      const queryString = params.toString();
+      const url = queryString ? `/transactions?${queryString}` : '/transactions';
+      
+      return await api.get<ListResponse>(url);
     } catch (error: any) {
       throw new Error(error?.message || 'Erro ao listar transações');
     }

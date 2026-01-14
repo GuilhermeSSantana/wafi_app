@@ -110,11 +110,13 @@ const ModalOverlay = styled.div<{ $show: boolean }>`
 const ModalContent = styled.div`
   background: ${({ theme }) => theme.colors.surface};
   border-radius: ${({ theme }) => theme.borderRadius['2xl']};
-  padding: ${({ theme }) => theme.spacing.xxl};
+  padding: ${({ theme }) => theme.spacing.xl};
   width: 100%;
-  max-width: 600px;
-  max-height: 90vh;
-  overflow-y: auto;
+  max-width: 700px;
+  max-height: 95vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
   box-shadow: ${({ theme }) => theme.shadows['2xl']};
   border: 1px solid ${({ theme }) => theme.colors.borderLight};
   animation: slideUp ${({ theme }) => theme.transitions.normal};
@@ -135,9 +137,10 @@ const ModalHeader = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: ${({ theme }) => theme.spacing.xl};
-  padding-bottom: ${({ theme }) => theme.spacing.lg};
+  margin-bottom: ${({ theme }) => theme.spacing.md};
+  padding-bottom: ${({ theme }) => theme.spacing.md};
   border-bottom: 1px solid ${({ theme }) => theme.colors.borderLight};
+  flex-shrink: 0;
 `;
 
 const ModalTitle = styled.h2`
@@ -172,13 +175,46 @@ const CloseButton = styled.button`
 const Form = styled.form`
   display: flex;
   flex-direction: column;
-  gap: ${({ theme }) => theme.spacing.lg};
+  gap: ${({ theme }) => theme.spacing.md};
+  overflow-y: auto;
+  flex: 1;
+  padding-right: ${({ theme }) => theme.spacing.xs};
+  
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: ${({ theme }) => theme.colors.backgroundSecondary};
+    border-radius: ${({ theme }) => theme.borderRadius.sm};
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: ${({ theme }) => theme.colors.border};
+    border-radius: ${({ theme }) => theme.borderRadius.sm};
+    
+    &:hover {
+      background: ${({ theme }) => theme.colors.borderDark};
+    }
+  }
 `;
 
 const FormGroup = styled.div`
   display: flex;
   flex-direction: column;
   gap: ${({ theme }) => theme.spacing.xs};
+  flex: 1;
+  min-width: 0;
+`;
+
+const FormRow = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: ${({ theme }) => theme.spacing.md};
+  
+  @media (max-width: 640px) {
+    grid-template-columns: 1fr;
+  }
 `;
 
 const Label = styled.label`
@@ -189,10 +225,10 @@ const Label = styled.label`
 `;
 
 const Input = styled.input`
-  padding: ${({ theme }) => theme.spacing.md} ${({ theme }) => theme.spacing.lg};
+  padding: ${({ theme }) => theme.spacing.sm} ${({ theme }) => theme.spacing.md};
   border: 1.5px solid ${({ theme }) => theme.colors.border};
   border-radius: ${({ theme }) => theme.borderRadius.lg};
-  font-size: ${({ theme }) => theme.typography.fontSize.base};
+  font-size: ${({ theme }) => theme.typography.fontSize.sm};
   transition: all ${({ theme }) => theme.transitions.normal};
   background: ${({ theme }) => theme.colors.surface};
   color: ${({ theme }) => theme.colors.text};
@@ -214,10 +250,10 @@ const Input = styled.input`
 `;
 
 const Select = styled.select`
-  padding: ${({ theme }) => theme.spacing.md} ${({ theme }) => theme.spacing.lg};
+  padding: ${({ theme }) => theme.spacing.sm} ${({ theme }) => theme.spacing.md};
   border: 1.5px solid ${({ theme }) => theme.colors.border};
   border-radius: ${({ theme }) => theme.borderRadius.lg};
-  font-size: ${({ theme }) => theme.typography.fontSize.base};
+  font-size: ${({ theme }) => theme.typography.fontSize.sm};
   transition: all ${({ theme }) => theme.transitions.normal};
   background: ${({ theme }) => theme.colors.surface};
   color: ${({ theme }) => theme.colors.text};
@@ -235,12 +271,12 @@ const Select = styled.select`
 `;
 
 const TextArea = styled.textarea`
-  padding: ${({ theme }) => theme.spacing.md} ${({ theme }) => theme.spacing.lg};
+  padding: ${({ theme }) => theme.spacing.sm} ${({ theme }) => theme.spacing.md};
   border: 1.5px solid ${({ theme }) => theme.colors.border};
   border-radius: ${({ theme }) => theme.borderRadius.lg};
-  font-size: ${({ theme }) => theme.typography.fontSize.base};
-  resize: vertical;
-  min-height: 120px;
+  font-size: ${({ theme }) => theme.typography.fontSize.sm};
+  resize: none;
+  height: 70px;
   transition: all ${({ theme }) => theme.transitions.normal};
   background: ${({ theme }) => theme.colors.surface};
   color: ${({ theme }) => theme.colors.text};
@@ -469,8 +505,9 @@ const Tabs = styled.div`
   display: flex;
   gap: ${({ theme }) => theme.spacing.xs};
   border-bottom: 2px solid ${({ theme }) => theme.colors.borderLight};
-  margin-bottom: ${({ theme }) => theme.spacing.xl};
+  margin-bottom: ${({ theme }) => theme.spacing.md};
   padding-bottom: ${({ theme }) => theme.spacing.xs};
+  flex-shrink: 0;
 `;
 
 const Tab = styled.button<{ $active: boolean }>`
@@ -496,7 +533,10 @@ const Tab = styled.button<{ $active: boolean }>`
 const ButtonGroup = styled.div`
   display: flex;
   gap: ${({ theme }) => theme.spacing.md};
-  margin-top: ${({ theme }) => theme.spacing.md};
+  margin-top: ${({ theme }) => theme.spacing.sm};
+  flex-shrink: 0;
+  padding-top: ${({ theme }) => theme.spacing.sm};
+  border-top: 1px solid ${({ theme }) => theme.colors.borderLight};
 `;
 
 const SubmitButton = styled(Button)`
@@ -816,7 +856,9 @@ export const TransactionsPage: React.FC = () => {
     description: '',
     date: new Date(),
     installment: '',
+    cardId: undefined,
   });
+  const [selectedManualCardId, setSelectedManualCardId] = useState<string>('');
   const [redirectData, setRedirectData] = useState({
     redirectType: '',
     redirectTo: '',
@@ -850,7 +892,8 @@ export const TransactionsPage: React.FC = () => {
   const loadTransactions = async () => {
     try {
       setLoading(true);
-      const response = await transactionService.list({ limit: 100 });
+      // Buscar todas as transações (limite alto para não perder dados)
+      const response = await transactionService.list({ limit: 10000, page: 1 });
       setTransactions(response.data);
     } catch (error) {
       console.error('Erro ao carregar transações:', error);
@@ -866,6 +909,7 @@ export const TransactionsPage: React.FC = () => {
       const createData: CreateTransactionData = {
         ...formData,
         date: formData.date ? (typeof formData.date === 'string' ? formData.date : (formData.date as Date).toISOString()) : undefined,
+        cardId: formData.type === TransactionType.EXPENSE && selectedManualCardId ? selectedManualCardId : undefined,
       };
       await transactionService.create(createData);
       setShowModal(false);
@@ -885,7 +929,9 @@ export const TransactionsPage: React.FC = () => {
       description: '',
       date: new Date(),
       installment: '',
+      cardId: undefined,
     });
+    setSelectedManualCardId('');
     setUploadedFile(null);
     setActiveTab('manual');
   };
@@ -1713,49 +1759,80 @@ export const TransactionsPage: React.FC = () => {
           </Tabs>
           {activeTab === 'manual' ? (
           <Form onSubmit={handleSubmit}>
-            <FormGroup>
-              <Label>Tipo</Label>
-              <Select
-                value={formData.type}
-                onChange={(e) => setFormData({ ...formData, type: e.target.value as TransactionType })}
-                required
-              >
-                <option value={TransactionType.INCOME}>Receita</option>
-                <option value={TransactionType.EXPENSE}>Despesa</option>
-              </Select>
-            </FormGroup>
-            <FormGroup>
-              <Label>Categoria</Label>
-              <Select
-                value={formData.category}
-                onChange={(e) => setFormData({ ...formData, category: e.target.value as TransactionCategory })}
-                required
-              >
-                <option value={TransactionCategory.SALARY}>Salário</option>
-                <option value={TransactionCategory.COMMISSION}>Comissão</option>
-                <option value={TransactionCategory.BONUS}>Bônus</option>
-                <option value={TransactionCategory.ADVANCE}>Vale</option>
-                <option value={TransactionCategory.CORPORATE_CARD}>Cartão Corporativo</option>
-                <option value={TransactionCategory.COMPANY_REVENUE}>Receita</option>
-                <option value={TransactionCategory.TRANSPORT}>Transporte</option>
-                <option value={TransactionCategory.FOOD}>Alimentação</option>
-                <option value={TransactionCategory.HEALTH}>Saúde</option>
-                <option value={TransactionCategory.EDUCATION}>Educação</option>
-                <option value={TransactionCategory.ENTERTAINMENT}>Entretenimento</option>
-                <option value={TransactionCategory.SHOPPING}>Compras</option>
-                <option value={TransactionCategory.BILLS}>Contas</option>
-                <option value={TransactionCategory.OTHER}>Outros</option>
-              </Select>
-            </FormGroup>
-            <FormGroup>
-              <Label>Data de Compra</Label>
-              <Input
-                type="date"
-                value={formData.date ? format(new Date(formData.date), 'yyyy-MM-dd') : ''}
-                onChange={(e) => setFormData({ ...formData, date: new Date(e.target.value) })}
-                required
-              />
-            </FormGroup>
+            <FormRow>
+              <FormGroup>
+                <Label>Tipo</Label>
+                <Select
+                  value={formData.type}
+                  onChange={(e) => setFormData({ ...formData, type: e.target.value as TransactionType })}
+                  required
+                >
+                  <option value={TransactionType.INCOME}>Receita</option>
+                  <option value={TransactionType.EXPENSE}>Despesa</option>
+                </Select>
+              </FormGroup>
+              <FormGroup>
+                <Label>Categoria</Label>
+                <Select
+                  value={formData.category}
+                  onChange={(e) => setFormData({ ...formData, category: e.target.value as TransactionCategory })}
+                  required
+                >
+                  <option value={TransactionCategory.SALARY}>Salário</option>
+                  <option value={TransactionCategory.COMMISSION}>Comissão</option>
+                  <option value={TransactionCategory.BONUS}>Bônus</option>
+                  <option value={TransactionCategory.ADVANCE}>Vale</option>
+                  <option value={TransactionCategory.CORPORATE_CARD}>Cartão Corporativo</option>
+                  <option value={TransactionCategory.COMPANY_REVENUE}>Receita</option>
+                  <option value={TransactionCategory.TRANSPORT}>Transporte</option>
+                  <option value={TransactionCategory.FOOD}>Alimentação</option>
+                  <option value={TransactionCategory.HEALTH}>Saúde</option>
+                  <option value={TransactionCategory.EDUCATION}>Educação</option>
+                  <option value={TransactionCategory.ENTERTAINMENT}>Entretenimento</option>
+                  <option value={TransactionCategory.SHOPPING}>Compras</option>
+                  <option value={TransactionCategory.BILLS}>Contas</option>
+                  <option value={TransactionCategory.OTHER}>Outros</option>
+                </Select>
+              </FormGroup>
+            </FormRow>
+            <FormRow>
+              <FormGroup>
+                <Label>Data de Compra</Label>
+                <Input
+                  type="date"
+                  value={formData.date ? format(new Date(formData.date), 'yyyy-MM-dd') : ''}
+                  onChange={(e) => setFormData({ ...formData, date: new Date(e.target.value) })}
+                  required
+                />
+              </FormGroup>
+              <FormGroup>
+                <Label>Valor (R$)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  value={formData.amount || ''}
+                  onChange={(e) => setFormData({ ...formData, amount: parseFloat(e.target.value) || 0 })}
+                  required
+                />
+              </FormGroup>
+            </FormRow>
+            {formData.type === TransactionType.EXPENSE && (
+              <FormGroup>
+                <Label>Cartão (Opcional)</Label>
+                <Select
+                  value={selectedManualCardId}
+                  onChange={(e) => setSelectedManualCardId(e.target.value)}
+                >
+                  <option value="">Nenhum cartão</option>
+                  {cards.map(card => (
+                    <option key={card.id} value={card.id}>
+                      {card.name}
+                    </option>
+                  ))}
+                </Select>
+              </FormGroup>
+            )}
             <FormGroup>
               <Label>Descrição</Label>
               <TextArea
@@ -1771,17 +1848,6 @@ export const TransactionsPage: React.FC = () => {
                 value={formData.installment || ''}
                 onChange={(e) => setFormData({ ...formData, installment: e.target.value })}
                 placeholder="Ex: 1/10, 2/4, Única"
-              />
-            </FormGroup>
-            <FormGroup>
-              <Label>Valor (R$)</Label>
-              <Input
-                type="number"
-                step="0.01"
-                min="0.01"
-                value={formData.amount || ''}
-                onChange={(e) => setFormData({ ...formData, amount: parseFloat(e.target.value) || 0 })}
-                required
               />
             </FormGroup>
             <ButtonGroup>

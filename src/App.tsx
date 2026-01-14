@@ -12,6 +12,8 @@ import { TransactionsPage } from '@pages/TransactionsPage';
 import { ReportsPage } from '@pages/ReportsPage';
 import { WhatsAppPage } from '@pages/WhatsAppPage';
 import { CardsPage } from '@pages/CardsPage';
+import { SettingsPage } from '@pages/SettingsPage';
+import { AdminPage } from '@pages/AdminPage';
 import { Layout } from '@components/Layout';
 
 function App() {
@@ -69,6 +71,26 @@ function App() {
                 <PrivateRoute>
                   <Layout>
                     <CardsPage />
+                  </Layout>
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/settings"
+              element={
+                <PrivateRoute>
+                  <Layout>
+                    <SettingsPage />
+                  </Layout>
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/admin"
+              element={
+                <PrivateRoute>
+                  <Layout>
+                    <AdminPage />
                   </Layout>
                 </PrivateRoute>
               }

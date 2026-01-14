@@ -2,6 +2,7 @@ import styled from 'styled-components';
 import { Link, useLocation } from 'react-router-dom';
 import { authService } from '@services/auth.service';
 import { useNavigate } from 'react-router-dom';
+import { useMe } from '@hooks/useMe';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -233,6 +234,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const user = authService.getUser();
+  const { isAdmin, loading: userLoading } = useMe();
 
   const handleLogout = () => {
     authService.logout();
@@ -259,6 +261,14 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                  <NavLink to="/whatsapp" $active={location.pathname === '/whatsapp'}>
                    💬 WhatsApp
                  </NavLink>
+                 <NavLink to="/settings" $active={location.pathname === '/settings'}>
+                   ⚙️ Configurações
+                 </NavLink>
+                 {!userLoading && isAdmin && (
+                   <NavLink to="/admin" $active={location.pathname === '/admin'}>
+                     🔐 Administração
+                   </NavLink>
+                 )}
         </Nav>
       </Sidebar>
       <Main>
@@ -270,6 +280,8 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                      {location.pathname === '/reports' && 'Relatórios'}
                      {location.pathname === '/cards' && 'Cartões'}
                      {location.pathname === '/whatsapp' && 'WhatsApp'}
+                     {location.pathname === '/settings' && 'Configurações'}
+                     {location.pathname === '/admin' && 'Administração'}
             </PageTitle>
           </HeaderLeft>
           <HeaderRight>
