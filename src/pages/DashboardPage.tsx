@@ -731,9 +731,11 @@ export const DashboardPage: React.FC = () => {
                 </PieChart>
               </ResponsiveContainer>
             ) : (
-              <EmptyState style={{ height: '320px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                Nenhuma despesa encontrada neste período
-              </EmptyState>
+              <div style={{ height: '320px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <EmptyState>
+                  Nenhuma despesa encontrada neste período
+                </EmptyState>
+              </div>
             )}
           </ChartCard>
         </ChartsGrid>
@@ -747,7 +749,7 @@ export const DashboardPage: React.FC = () => {
             Ver todas →
           </ViewAllButton>
         </SectionHeader>
-        <Card style={{ border: '1px solid', borderColor: '#e5e7eb' }}>
+        <div style={{ border: '1px solid', borderColor: '#e5e7eb', borderRadius: '12px', padding: '1.5rem' }}>
           {recentTransactions.length === 0 ? (
             <EmptyState>
               Nenhuma transação encontrada. Comece adicionando uma nova transação.
@@ -791,7 +793,7 @@ export const DashboardPage: React.FC = () => {
               })}
             </TransactionsList>
           )}
-        </Card>
+        </div>
       </Section>
     </Container>
   );

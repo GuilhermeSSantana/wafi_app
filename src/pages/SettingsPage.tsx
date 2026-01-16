@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import styled from 'styled-components';
 import { useMe } from '@hooks/useMe';
 import { settingsService, UpdateProfileData, ChangePasswordData } from '@services/settings.service';
-import { coupleService, CreateCoupleData, UpdateCoupleData, CouplePermissions } from '@services/couple.service';
+import { coupleService, CreateCoupleData, UpdateCoupleData } from '@services/couple.service';
+import { CouplePermissions } from '@services/settings.service';
 import { useToast } from '@contexts/ToastContext';
 
 const Container = styled.div`
@@ -302,7 +303,7 @@ export const SettingsPage: React.FC = () => {
   };
 
   const updatePermission = (module: keyof CouplePermissions, action: string, value: boolean) => {
-    setPermissions((prev) => ({
+    setPermissions((prev: CouplePermissions) => ({
       ...prev,
       [module]: {
         ...prev[module],
